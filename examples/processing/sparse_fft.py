@@ -5,6 +5,10 @@ from acconeer_utils.clients import configs
 from acconeer_utils import example_utils
 from acconeer_utils.structs import configbase
 
+waitForCompletingSpeedLimitDetection = None
+
+# Speedlimit in km/h
+speedLimit = 15
 
 def main():
     args = example_utils.ExampleArgumentParser(num_sens=1).parse_args()
@@ -31,19 +35,33 @@ def main():
 
     processor = Processor(sensor_config, processing_config, session_info)
 
+    global speedLimit
+    global waitForCompletingSpeedLimitDetection
+    
     while not interrupt_handler.got_signal:
         info, sweep = client.get_next()
         speed = processor.process(sweep)
-        print (speed)
-     break
+        speed = speed * 3.6
+
+        if speed > speedLimit:
+            speedLimit = speed
+            print ("Maximal current Speed: " + str(speedLimit))
+            if not waitForCompletingSpeedLimitDetection:
+                waitForCompletingSpeedLimitDetection = True
+                timer1 = threading.Timer(0.1, captureImageFromCamera) 
+                timer1.start()
+                timer2 = threading.Timer(2.0, sendSpeedCatImage)
+                timer2.start()
+        # print (speed)
 
     print("Disconnecting...")
+    # pg_process.close()
     client.disconnect()
 
 
 def get_sensor_config():
     config = configs.SparseServiceConfig()
-    config.range_interval = [1.5, 1.58]
+    config.range_interval = [0.24, 0.48]
     config.sampling_mode = config.SAMPLING_MODE_A
     config.number_of_subsweeps = 64
     config.subsweep_rate = 3e3
@@ -78,7 +96,6 @@ get_processing_config = ProcessingConfiguration
 
 class Processor:
     def __init__(self, sensor_config, processing_config, session_info):
-        # pass
         half_wavelength = 2.445e-3  # m
         subsweep_rate = sensor_config.subsweep_rate
         num_subsweeps = sensor_config.number_of_subsweeps
@@ -100,6 +117,36 @@ class Processor:
         speed = max_bin * self.bin_index_to_speed
 
         return speed
+
+def captureImageFromCamera(): 
+    print("Trigger Canon EOS80D\n")
+    myCmd = '/home/stellarmate/Pictures/SpeedCam/captureImage.sh'
+    os.system(myCmd)
+
+def sendSpeedCatImage(): 
+    print ("Lock radar until image is sendet")
+    global waitForCompletingSpeedLimitDetection
+    global speedLimit
+    # from m/s to km/h
+    m = speedLimit * 3.6
+
+    print("Write max Speed to file: " + str(speedLimit))
+    f = open("speed.txt", "w")
+    f.write(str(speedLimit.round(1)) + " km/h")
+    f.close()
+    
+    print("Start Postprocessing")
+    myCmd = '/home/stellarmate/Pictures/SpeedCam/postProcessing.sh'
+    os.system(myCmd)
+    
+    print("Send Email with Attachment")
+    myCmd = '/home/stellarmate/Pictures/SpeedCam/sendmail.sh'
+    os.system(myCmd)
+
+    speedLimit = 11000
+    waitForCompletingSpeedLimitDetection = None
+
+    print ("Release radar lock")
 
 if __name__ == "__main__":
     main()
