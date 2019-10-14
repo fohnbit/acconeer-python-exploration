@@ -41,7 +41,7 @@ def main():
     while not interrupt_handler.got_signal:
         info, sweep = client.get_next()
         speed = processor.process(sweep)
-        speed = speed * 3.6
+        # speed = speed * 3.6
 
         if speed > speedLimit:
             speedLimit = speed
@@ -61,13 +61,17 @@ def main():
 
 def get_sensor_config():
     config = configs.SparseServiceConfig()
-    config.range_interval = [0.24, 0.48]
-    config.sampling_mode = config.SAMPLING_MODE_A
-    config.number_of_subsweeps = 64
-    config.subsweep_rate = 3e3
 
-    # max frequency
-    config.sweep_rate = 100
+    config.range_interval = [0.30, 0.48]
+    config.stepsize = 3
+    config.sampling_mode = configs.SparseServiceConfig.SAMPLING_MODE_A
+    config.number_of_subsweeps = 512
+    config.gain = 0.5
+    config.hw_accelerated_average_samples = 60
+    config.subsweep_rate = 6e3
+
+    # force max frequency
+    config.sweep_rate = 200
     config.experimental_stitching = True
 
     return config
