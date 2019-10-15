@@ -2,7 +2,7 @@ from enum import Enum
 import numpy as np
 from scipy.signal import welch
 import threading
-import os
+import subprocess
 
 
 from acconeer_utils.clients import SocketClient, SPIClient, UARTClient
@@ -52,12 +52,15 @@ def main():
 
     global speedLimitTemp
     global waitForCompletingSpeedLimitDetection
+    lastSpeed = 0
     
     while not interrupt_handler.got_signal:
         info, sweep = client.get_next()
         plot_data = processor.process(sweep)
         speed = (plot_data["vel"]) * 3.6
-        print (speed)
+        if speed > 1 and lastSpeed != speed:
+            print (speed)
+            lastSpeed = speed
         if speed > speedLimitTemp:
             speedLimitTemp = speed
             print ("Maximal current Speed: " + str(speedLimitTemp))
@@ -65,7 +68,7 @@ def main():
                 waitForCompletingSpeedLimitDetection = True
                 timer1 = threading.Timer(0.1, captureImageFromCamera) 
                 timer1.start()
-                timer2 = threading.Timer(2.0, sendSpeedCatImage)
+                timer2 = threading.Timer(10.0, sendSpeedCatImage)
                 timer2.start()
 
     print("Disconnecting...")
@@ -279,8 +282,8 @@ def get_range_depths(sensor_config, session_info):
 
 def captureImageFromCamera(): 
     print("Trigger Canon EOS80D\n")
-    myCmd = '/home/stellarmate/Pictures/SpeedCam/captureImage.sh'
-    os.system(myCmd)
+    myCmd = './captureImage.sh'
+    subprocess.call([myCmd])
 
 def sendSpeedCatImage(): 
     print ("Lock radar until image is sendet")
@@ -295,12 +298,12 @@ def sendSpeedCatImage():
     f.close()
     
     print("Start Postprocessing")
-    myCmd = '/home/stellarmate/Pictures/SpeedCam/postProcessing.sh'
-    os.system(myCmd)
+    myCmd = './postProcessing.sh'
+    subprocess.call([myCmd])
     
     print("Send Email with Attachment")
-    myCmd = '/home/stellarmate/Pictures/SpeedCam/sendmail.sh'
-    os.system(myCmd)
+    myCmd = './sendmail.sh'
+    subprocess.call([myCmd])
 
     speedLimitTemp = speedLimit
     waitForCompletingSpeedLimitDetection = None
