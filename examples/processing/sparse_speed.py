@@ -112,8 +112,9 @@ class ProcessingConfiguration(configbase.ProcessingConfig):
     min_speed = configbase.FloatParameter(
             label="Minimum speed",
             unit="m/s",
-            default_value=0.1,
-            limits=(0, 10),
+            default_value=0.2,
+            limits=(0, 5),
+            decimals=1,
             updateable=True,
             order=0,
             )
@@ -207,7 +208,7 @@ class Processor:
         psd = np.max(psds, axis=1)
         asd = np.sqrt(psd)
 
-        inst_noise_est = np.mean(asd[-self.num_noise_est_bins:])
+        inst_noise_est = np.mean(asd[(-self.num_noise_est_bins - 1):-1])
         sf = self.dynamic_sf(self.noise_est_sf)
         self.noise_est = sf * self.noise_est + (1.0 - sf) * inst_noise_est
 
