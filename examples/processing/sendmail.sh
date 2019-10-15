@@ -51,3 +51,5 @@ done
 printf '%s\n' "--${boundary}--"
  
 } | sendmail -t -oi   # one may also use -f here to set the envelope-from
+
+echo "radatCat Image sendet"
