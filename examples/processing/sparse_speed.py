@@ -3,7 +3,7 @@ import numpy as np
 from scipy.signal import welch
 import threading
 import subprocess
-import gphoto2 as gp
+
 
 from acconeer_utils.clients import SocketClient, SPIClient, UARTClient
 from acconeer_utils.clients import configs
@@ -56,21 +56,19 @@ def main():
     
     while not interrupt_handler.got_signal:
         info, sweep = client.get_next()
-        speed_data = processor.process(sweep)
-        # m/s to km/h
-        speed = speed_data * 3.6
-        # print speed if changed
+        plot_data = processor.process(sweep)
+        speed = (plot_data["vel"]) * 3.6
         if speed > 1 and lastSpeed != speed:
             print (speed)
             lastSpeed = speed
-        # check if speed is over speed limit
         if speed > speedLimitTemp:
             speedLimitTemp = speed
             print ("Maximal current Speed: " + str(speedLimitTemp))
             if not waitForCompletingSpeedLimitDetection:
                 waitForCompletingSpeedLimitDetection = True
-                captureImageFromCamera()
-                timer2 = threading.Timer(10.0, sendRadarCatImage)
+                timer1 = threading.Timer(0.1, captureImageFromCamera) 
+                timer1.start()
+                timer2 = threading.Timer(10.0, sendSpeedCatImage)
                 timer2.start()
 
     print("Disconnecting...")
@@ -222,10 +220,60 @@ class Processor:
 
         if est_idx > 0:  # evaluates to false if nan
             est_vel = self.bin_vs[est_idx]
-            return est_vel
         else:
-            # est_vel = np.nan
-            return 0.0
+            est_vel = np.nan
+
+        if est_vel < self.min_speed:  # evaluates to false if nan
+            est_vel = np.nan
+
+        # Sequence
+
+        self.belongs_to_last_sequence = np.roll(self.belongs_to_last_sequence, -1)
+
+        if np.isnan(est_vel):
+            self.current_sequence_idle += 1
+        else:
+            if self.current_sequence_idle > SEQUENCE_TIMEOUT_COUNT:
+                self.sequence_vels = np.roll(self.sequence_vels, -1)
+                self.sequence_vels[-1] = est_vel
+                self.belongs_to_last_sequence[:] = False
+
+            self.current_sequence_idle = 0
+            self.belongs_to_last_sequence[-1] = True
+
+            if est_vel > self.sequence_vels[-1]:
+                self.sequence_vels[-1] = est_vel
+
+        # Data for plots
+
+        self.est_vel_history = np.roll(self.est_vel_history, -1, axis=0)
+        self.est_vel_history[-1] = est_vel
+
+        if np.all(np.isnan(self.est_vel_history)):
+            output_vel = 0
+        else:
+            output_vel = np.nanmax(self.est_vel_history)
+
+        self.nasd_history = np.roll(self.nasd_history, -1, axis=0)
+        self.nasd_history[-1] = nasd
+
+        nasd_temporal_max = np.max(self.nasd_history, axis=0)
+
+        temporal_max_threshold = max(
+            self.min_threshold, np.max(nasd_temporal_max) * self.dynamic_threshold)
+
+        self.update_idx += 1
+      
+        return {
+            "sweep": sweep,
+            "sd": nasd_temporal_max,
+            "sd_threshold": temporal_max_threshold,
+            "vel_history": self.est_vel_history,
+            "vel": output_vel,
+            "sequence_vels": self.sequence_vels,
+            "belongs_to_last_sequence": self.belongs_to_last_sequence,
+        }
+
 
 def get_range_depths(sensor_config, session_info):
     range_start = session_info["actual_range_start"]
@@ -233,26 +281,27 @@ def get_range_depths(sensor_config, session_info):
     num_depths = session_info["data_length"] // sensor_config.number_of_subsweeps
     return np.linspace(range_start, range_end, num_depths)
 
-def captureImageFromCamera():
+def captureImageFromCamera(): 
     print("Trigger Canon EOS80D\n")
     myCmd = './captureImage.sh'
     subprocess.call([myCmd])
 
-def sendRadarCatImage():
+def sendSpeedCatImage(): 
     print ("Lock radar until image is sendet")
     global waitForCompletingSpeedLimitDetection
     global speedLimitTemp
-    global speedLimit
+    global speedLimit   
+
 
     print("Write max Speed to file: " + str(speedLimitTemp))
     f = open("speed.txt", "w")
     f.write(str(round(speedLimitTemp, 1)) + " km/h")
     f.close()
-
+    
     print("Start Postprocessing")
     myCmd = './postProcessing.sh'
     subprocess.call([myCmd])
-
+    
     print("Send Email with Attachment")
     myCmd = './sendmail.sh'
     subprocess.call([myCmd])
@@ -261,6 +310,6 @@ def sendRadarCatImage():
     waitForCompletingSpeedLimitDetection = None
 
     print ("Release radar lock")
-
+    
 if __name__ == "__main__":
     main()
