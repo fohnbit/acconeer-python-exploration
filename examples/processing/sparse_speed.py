@@ -22,7 +22,7 @@ SEQUENCE_TIMEOUT_COUNT = 10
 waitForCompletingSpeedLimitDetection = None
 
 # Speedlimit in km/h
-speedLimit = 10
+speedLimit = 4
 speedLimitTemp = speedLimit
 
 def main():
@@ -78,7 +78,7 @@ def main():
 def get_sensor_config():
     config = configs.SparseServiceConfig()
 
-    config.range_interval = [0.30, 0.48]
+    config.range_interval = [0.48, 0.65]
     config.stepsize = 3
     config.sampling_mode = configs.SparseServiceConfig.SAMPLING_MODE_A
     config.number_of_subsweeps = NUM_FFT_BINS
