@@ -6,11 +6,11 @@
 
 from="hoe@gedomo.com"
 to="office@gedomo.com"
-subject="Blitzerfoto von SpeedCam"
+subject="Blitzerfoto von radarCat"
 boundary="ZZ_/afg6432dfgkl.94531q"
 body="Blitzerfoto"
 declare -a attachments
-attachments=( "SpeedCatImage.jpg" )
+attachments=( "radarCat.jpg" )
 
 # Build headers
 {
