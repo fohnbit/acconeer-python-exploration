@@ -12,7 +12,7 @@ from acconeer_utils.structs import configbase
 
 
 HALF_WAVELENGTH = 2.445e-3  # m
-NUM_FFT_BINS = 256
+NUM_FFT_BINS = 128
 HISTORY_LENGTH = 2.0  # s
 EST_VEL_HISTORY_LENGTH = HISTORY_LENGTH  # s
 SD_HISTORY_LENGTH = HISTORY_LENGTH  # s
@@ -42,6 +42,7 @@ def main():
     sensor_config.sensor = args.sensors
 
     session_info = client.setup_session(sensor_config)
+    print(session_info)
 
     client.start_streaming()
 
