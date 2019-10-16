@@ -178,6 +178,8 @@ class Processor:
         self.sequence_vels = np.zeros(NUM_SAVED_SEQUENCES)
         self.update_idx = 0
 
+        self.depths = get_range_depths(sensor_config, session_info)
+        
         self.update_processing_config(processing_config)
 
     def update_processing_config(self, processing_config):
@@ -226,6 +228,10 @@ class Processor:
         if est_vel < self.min_speed:  # evaluates to false if nan
             est_vel = np.nan
 
+        depth = self.depths[max_depth_index]
+        print ("Speed: " + str(est_vel) + " m/s, Distance: " + str(depth))
+        
+        
         # Sequence
 
         self.belongs_to_last_sequence = np.roll(self.belongs_to_last_sequence, -1)
