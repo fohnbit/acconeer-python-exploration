@@ -12,7 +12,7 @@ from acconeer_utils.structs import configbase
 
 
 HALF_WAVELENGTH = 2.445e-3  # m
-NUM_FFT_BINS = 512
+NUM_FFT_BINS = 256
 HISTORY_LENGTH = 2.0  # s
 EST_VEL_HISTORY_LENGTH = HISTORY_LENGTH  # s
 SD_HISTORY_LENGTH = HISTORY_LENGTH  # s
@@ -78,7 +78,7 @@ def main():
 def get_sensor_config():
     config = configs.SparseServiceConfig()
 
-    config.range_interval = [0.48, 0.65]
+    config.range_interval = [2.00, 2.20]
     config.stepsize = 3
     config.sampling_mode = configs.SparseServiceConfig.SAMPLING_MODE_A
     config.number_of_subsweeps = NUM_FFT_BINS
