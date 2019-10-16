@@ -57,9 +57,10 @@ def main():
     while not interrupt_handler.got_signal:
         info, sweep = client.get_next()
         plot_data = processor.process(sweep)
-        speed = (plot_data["vel"]) * 3.6
+        speed = (plot_data["speed"]) * 3.6
+        distance = (plot_data["distance"])
         if speed > 1 and lastSpeed != speed:
-            print (speed)
+            print ("Speed: " + str(speed) + " m/s, Distance: " + str(distance))
             lastSpeed = speed
         if speed > speedLimitTemp:
             speedLimitTemp = speed
@@ -228,65 +229,20 @@ class Processor:
         if est_vel < self.min_speed:  # evaluates to false if nan
             est_vel = np.nan
 
+        # print speed and distance
         fft = np.fft.rfft(zero_mean_sweep.T * np.hanning(sweep.shape[0]), axis=1)
         abs_fft = np.abs(fft)
-
-        # abs_fft is a matrix with dims abs_fft[depth, freq_bin]
-        # we don't care about the depth, so take max over all depths
-        asd = np.max(abs_fft, axis=0)
-        
         max_depth_index, max_bin = np.unravel_index(abs_fft.argmax(), abs_fft.shape)
         depth = self.depths[max_depth_index]
-        print ("Speed: " + str(est_vel) + " m/s, Distance: " + str(depth))
+       
+        # print ("Speed: " + str(est_vel) + " m/s, Distance: " + str(depth))
         
-        
-        # Sequence
-
-        self.belongs_to_last_sequence = np.roll(self.belongs_to_last_sequence, -1)
-
-        if np.isnan(est_vel):
-            self.current_sequence_idle += 1
-        else:
-            if self.current_sequence_idle > SEQUENCE_TIMEOUT_COUNT:
-                self.sequence_vels = np.roll(self.sequence_vels, -1)
-                self.sequence_vels[-1] = est_vel
-                self.belongs_to_last_sequence[:] = False
-
-            self.current_sequence_idle = 0
-            self.belongs_to_last_sequence[-1] = True
-
-            if est_vel > self.sequence_vels[-1]:
-                self.sequence_vels[-1] = est_vel
-
-        # Data for plots
-
-        self.est_vel_history = np.roll(self.est_vel_history, -1, axis=0)
-        self.est_vel_history[-1] = est_vel
-
-        if np.all(np.isnan(self.est_vel_history)):
-            output_vel = 0
-        else:
-            output_vel = np.nanmax(self.est_vel_history)
-
-        self.nasd_history = np.roll(self.nasd_history, -1, axis=0)
-        self.nasd_history[-1] = nasd
-
-        nasd_temporal_max = np.max(self.nasd_history, axis=0)
-
-        temporal_max_threshold = max(
-            self.min_threshold, np.max(nasd_temporal_max) * self.dynamic_threshold)
-
-        self.update_idx += 1
-      
         return {
-            "sweep": sweep,
-            "sd": nasd_temporal_max,
-            "sd_threshold": temporal_max_threshold,
-            "vel_history": self.est_vel_history,
-            "vel": output_vel,
-            "sequence_vels": self.sequence_vels,
-            "belongs_to_last_sequence": self.belongs_to_last_sequence,
+               "speed": est_vel,
+               "distance": depth,
         }
+        
+
 
 
 def get_range_depths(sensor_config, session_info):
