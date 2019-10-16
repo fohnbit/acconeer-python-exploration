@@ -228,6 +228,13 @@ class Processor:
         if est_vel < self.min_speed:  # evaluates to false if nan
             est_vel = np.nan
 
+        fft = np.fft.rfft(zero_mean_sweep.T * np.hanning(sweep.shape[0]), axis=1)
+        abs_fft = np.abs(fft)
+
+        # abs_fft is a matrix with dims abs_fft[depth, freq_bin]
+        # we don't care about the depth, so take max over all depths
+        asd = np.max(abs_fft, axis=0)
+        
         max_depth_index, max_bin = np.unravel_index(abs_fft.argmax(), abs_fft.shape)
         depth = self.depths[max_depth_index]
         print ("Speed: " + str(est_vel) + " m/s, Distance: " + str(depth))
