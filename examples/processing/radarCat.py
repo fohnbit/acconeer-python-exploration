@@ -64,7 +64,7 @@ def main():
         distance = (plot_data["distance"])
         
         if speed > 1 and lastSpeed != speed:
-            print ("Speed: " + str(round(speed, 1) + "km/h, Distance: " + str(round(distance, 1) + "m")
+            print ("Speed: " + str(round(speed, 1)) + "km/h, Distance: " + str(round(distance, 1)) + "m")
             lastSpeed = speed
         
         if speed > SPEEDLIMIT_TEMP:
