@@ -29,6 +29,8 @@ WAITFORCOMPLETINGSPEEDLIMITDETECTION = None
 # Speedlimit in km/h
 SPEEDLIMIT = 4
 SPEEDLIMIT_TEMP = SPEEDLIMIT
+CAMERA = None
+CONTEXT = None
 
 def main():
     args = example_utils.ExampleArgumentParser(num_sens=1).parse_args()
@@ -48,11 +50,13 @@ def main():
     gp.check_result(gp.use_python_logging())
     
     # setup Camera
+    global CAMERA
+    global CONTEXT
     subprocess.call(["gphoto2","--set-config", "datetime= " + str(time.time())])
     
-    context = gp.gp_context_new()
-    camera = gp.check_result(gp.gp_camera_new())
-    gp.check_result(gp.gp_camera_init(camera, context))
+    CONTEXT = gp.gp_context_new()
+    CAMERA = gp.check_result(gp.gp_camera_new())
+    gp.check_result(gp.gp_camera_init(CAMERA, CONTEXT))
 
     sensor_config = get_sensor_config()
     processing_config = get_processing_config()
@@ -319,23 +323,25 @@ def get_range_depths(sensor_config, session_info):
     return np.linspace(range_start, range_end, num_depths)
     
 def captureImage():
-    current_time = datetime.datetime.now()
-                
+    global CAMERA
+    global CONTEXT
+    current_time = datetime.now()
+
     file_path = gp.check_result(gp.gp_camera_capture(
-        camera, gp.GP_CAPTURE_IMAGE, context))
+        CAMERA, gp.GP_CAPTURE_IMAGE, CONTEXT))
     print('Camera file path: {0}/{1}'.format(file_path.folder, file_path.name))
     target = os.path.join('.', file_path.name)
     print('Copying image to', target)
     camera_file = gp.check_result(gp.gp_camera_file_get(
-            camera, file_path.folder, file_path.name,
-            gp.GP_FILE_TYPE_NORMAL, context))
+            CAMERA, file_path.folder, file_path.name,
+            gp.GP_FILE_TYPE_NORMAL, CONTEXT))
     gp.check_result(gp.gp_file_save(camera_file, target))
     # subprocess.call(['xdg-open', target])
-    gp.check_result(gp.gp_camera_exit(camera, context))
+    gp.check_result(gp.gp_camera_exit(CAMERA, CONTEXT))
 
     print("Write capture date/time to file")
     f = open("captureDateTime.txt", "w")
-    f.write(current_time)
+    f.write(str(current_time))
     f.close()
 
 def sendRadarCatImage(): 
