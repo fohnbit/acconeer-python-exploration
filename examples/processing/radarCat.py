@@ -33,6 +33,9 @@ CAMERA = None
 CONTEXT = None
 # setup logging
 logger = logging.getLogger('radarCat_LOG')
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger.setFormatter(formatter)
 
 def main():
     global CAMERA
@@ -50,7 +53,7 @@ def main():
         port = args.serial_port or example_utils.autodetect_serial_port()
         client = UARTClient(port)
 
-    logger.basicConfig(format='%(levelname)s: %(name)s: %(message)s', level=logging.INFO)
+    # logger.basicConfig(format='%(levelname)s: %(name)s: %(message)s', level=logging.INFO)
     # setup Camera
 
     subprocess.call(["gphoto2","--set-config", "datetime=now"])
