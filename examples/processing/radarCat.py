@@ -41,12 +41,13 @@ def main():
         port = args.serial_port or example_utils.autodetect_serial_port()
         client = UARTClient(port)
 
-    # setup Camera
+    # setup logging
     logging.basicConfig(
         format='%(levelname)s: %(name)s: %(message)s', level=logging.WARNING)
     gp.check_result(gp.use_python_logging())
-    current_time = datetime.datetime.now()
-    subprocess.call(["gphoto2","--set-config", current_time])
+    
+    # setup Camera
+    subprocess.call(["gphoto2","--set-config", datetime.now()])
     
     context = gp.gp_context_new()
     camera = gp.check_result(gp.gp_camera_new())
