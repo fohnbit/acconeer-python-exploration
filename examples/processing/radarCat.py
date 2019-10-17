@@ -42,7 +42,7 @@ def main():
     
     args = example_utils.ExampleArgumentParser(num_sens=1).parse_args()
     example_utils.config_logging(args)
-    logging.info("radarCat starting with args " + args)
+    logging.info("radarCat starting with args " + str(args))
 
     if args.socket_addr:
         client = SocketClient(args.socket_addr)
@@ -101,8 +101,7 @@ def main():
     
                 threadSendRadarCatImage = Thread(target = sendRadarCatImage, args=[])
                 threadSendRadarCatImage.start()
-                # threadSendRadarCatImage.join()
-
+                
     print("Disconnecting...")
     client.disconnect()
 
