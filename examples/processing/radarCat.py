@@ -35,7 +35,7 @@ CONTEXT = None
 logger = logging.getLogger('radarCat_LOG')
 logger.setLevel(logging.INFO)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger.setFormatter(formatter)
+# logger.setFormatter(formatter)
 
 def main():
     global CAMERA
