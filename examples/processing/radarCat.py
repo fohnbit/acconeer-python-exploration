@@ -99,6 +99,7 @@ def main():
     lastSpeed = np.nan
     lastDistance = 0
     curDirection = "away"
+    gotDirection = False
 
     while not interrupt_handler.got_signal:
         # if WAITFORCOMPLETINGSPEEDLIMITDETECTION:
@@ -109,6 +110,7 @@ def main():
         #   client.start_streaming()
         info, sweep = client.get_next()
         if LOCKRADAR:
+            gotDirection = False
             continue
 
         plot_data = processor.process(sweep)
@@ -123,11 +125,15 @@ def main():
 
         if speed > 0.2 and (lastSpeed != speed or distance != lastDistance):
             if lastDistance != 0 and distance > lastDistance:
-               DIRECTION = "away"
-               curDirection = DIRECTION
+               if !gotDirection:
+                    DIRECTION = "away"
+                    gotDirection = True
+               curDirection = "away"
             elif lastDistance != 0 and distance < lastDistance:
-               DIRECTION = "towards"
-               curDirection = DIRECTION
+                if !gotDirection:
+                    DIRECTION = "towards"
+                    gotDirection = True
+                curDirection = "towards"
             elif lastDistance != 0 and distance == lastDistance:
                curDirection = "stay"
             else:
