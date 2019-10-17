@@ -89,24 +89,9 @@ def main():
             print ("Maximal current Speed: " + str(SPEEDLIMIT_TEMP))
             if not WAITFORCOMPLETINGSPEEDLIMITDETECTION:
                 WAITFORCOMPLETINGSPEEDLIMITDETECTION = True
-                current_time = datetime.datetime.now()
                 
-                file_path = gp.check_result(gp.gp_camera_capture(
-                    camera, gp.GP_CAPTURE_IMAGE, context))
-                print('Camera file path: {0}/{1}'.format(file_path.folder, file_path.name))
-                target = os.path.join('.', file_path.name)
-                print('Copying image to', target)
-                camera_file = gp.check_result(gp.gp_camera_file_get(
-                        camera, file_path.folder, file_path.name,
-                        gp.GP_FILE_TYPE_NORMAL, context))
-                gp.check_result(gp.gp_file_save(camera_file, target))
-                # subprocess.call(['xdg-open', target])
-                gp.check_result(gp.gp_camera_exit(camera, context))
-    
-                print("Write capture date/time to file")
-                f = open("captureDateTime.txt", "w")
-                f.write(current_time)
-                f.close()
+                threadCaptureImage = Thread(target = captureImage, args=[])
+                threadCaptureImage.start()
     
                 threadSendRadarCatImage = Thread(target = sendRadarCatImage, args=[])
                 threadSendRadarCatImage.start()
@@ -332,6 +317,26 @@ def get_range_depths(sensor_config, session_info):
     range_end = range_start + session_info["actual_range_length"]
     num_depths = session_info["data_length"] // sensor_config.number_of_subsweeps
     return np.linspace(range_start, range_end, num_depths)
+    
+def captureImage():
+    current_time = datetime.datetime.now()
+                
+    file_path = gp.check_result(gp.gp_camera_capture(
+        camera, gp.GP_CAPTURE_IMAGE, context))
+    print('Camera file path: {0}/{1}'.format(file_path.folder, file_path.name))
+    target = os.path.join('.', file_path.name)
+    print('Copying image to', target)
+    camera_file = gp.check_result(gp.gp_camera_file_get(
+            camera, file_path.folder, file_path.name,
+            gp.GP_FILE_TYPE_NORMAL, context))
+    gp.check_result(gp.gp_file_save(camera_file, target))
+    # subprocess.call(['xdg-open', target])
+    gp.check_result(gp.gp_camera_exit(camera, context))
+
+    print("Write capture date/time to file")
+    f = open("captureDateTime.txt", "w")
+    f.write(current_time)
+    f.close()
 
 def sendRadarCatImage(): 
     print ("Lock radar until image is sendet")
