@@ -77,7 +77,7 @@ def main():
                 threadCaptureImageFromCamera.start()
                 threadCaptureImageFromCamera.join()
     
-                threadSendRadarCatImage = Thread(target = senRadarCatImage)
+                threadSendRadarCatImage = Thread(target = sendRadarCatImage)
                 threadSendRadarCatImage.start()
                 threadSendRadarCatImage.join()
 
@@ -307,7 +307,7 @@ def captureImageFromCamera():
     myCmd = './captureImage.sh'
     subprocess.call([myCmd])
 
-def sendSpeedCatImage(): 
+def sendRadarCatImage(): 
     print ("Lock radar until image is sendet")
     sleep(10)
     global waitForCompletingSpeedLimitDetection
