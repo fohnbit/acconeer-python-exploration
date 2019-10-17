@@ -9,6 +9,8 @@ import logging
 import os
 from datetime import datetime
 import time
+import ConfigParser
+import io
 
 from acconeer_utils.clients import SocketClient, SPIClient, UARTClient
 from acconeer_utils.clients import configs
@@ -39,6 +41,16 @@ def main():
     global CAMERA
     global CONTEXT
     global logging
+    
+    
+    # Load the configuration file
+    with open("settings.ini") as f:
+    sample_config = f.read()
+    config = ConfigParser.RawConfigParser(allow_no_value=True)
+    config.readfp(io.BytesIO(sample_config))
+    
+    NUM_FFT_BINS = config.get("radar","NUM_FFT_BINS")    
+    
     
     args = example_utils.ExampleArgumentParser(num_sens=1).parse_args()
     example_utils.config_logging(args)
