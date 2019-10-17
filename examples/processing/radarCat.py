@@ -27,7 +27,7 @@ SPEEDLIMIT = 4
 SPEEDLIMIT_TEMP = SPEEDLIMIT
 CAMERA = None
 CONTEXT = None
-MOVEMENT = ""
+DIRECTION = ""
 LOCKRADAR = None
 
 # setup logging
@@ -93,12 +93,12 @@ def main():
 
     global SPEEDLIMIT_TEMP
     global WAITFORCOMPLETINGSPEEDLIMITDETECTION
-    global MOVEMENT
+    global DIRECTION
     global LOCKRADAR
 
     lastSpeed = np.nan
     lastDistance = 0
-    curMovement = "away"
+    curDirection = "away"
 
     while not interrupt_handler.got_signal:
         # if WAITFORCOMPLETINGSPEEDLIMITDETECTION:
@@ -123,17 +123,17 @@ def main():
 
         if speed > 0.2 and (lastSpeed != speed or distance != lastDistance):
             if lastDistance != 0 and distance > lastDistance:
-               MOVEMENT = "away"
-               curMovement = MOVEMENT
+               DIRECTION = "away"
+               curDirection = MOVEMENT
             elif lastDistance != 0 and distance < lastDistance:
-               MOVEMENT = "towards"
-               curMovement = MOVEMENT
+               DIRECTION = "towards"
+               curDirection = MOVEMENT
             elif lastDistance != 0 and distance == lastDistance:
-               curMovement = "stay"
+               curDirection = "stay"
             else:
-               curMovement = ""
+               curDirection = ""
 
-            logging.info("Speed: " + str(round(speed, 1)) + "km/h in " + str(round(distance, 1)) + "m " + curMovement)
+            logging.info("Speed: " + str(round(speed, 1)) + "km/h in " + str(round(distance, 1)) + "m " + curDirection)
             lastSpeed = speed
             lastDistance = distance
         elif speed < 0.4 and lastSpeed != 0:
@@ -410,19 +410,19 @@ def sendRadarCatImage():
 
 def lockRadar():
     global LOCKRADAR
-    global MOVEMENT
+    global DIRECTION
     LOCKRADAR = True
-    logging.info("Write movement to file: " + str(MOVEMENT))
-    f = open("movement.txt", "w")
-    if MOVEMENT == "away":
-        MOVEMENT = "A"
-    elif MOVEMENT == "towards":
-        MOVEMENT = "T"
+    logging.info("Write movement to file: " + str(DIRECTION))
+    f = open("direction.txt", "w")
+    if DIRECTION == "away":
+        DIRECTION = "A"
+    elif DIRECTION == "towards":
+        DIRECTION = "T"
     else:
-        MOVEMENT = ""
-    f.write(MOVEMENT)
+        DIRECTION = ""
+    f.write(DIRECTION)
     f.close()
-    MOVEMENT = ""
+    DIRECTION = ""
 
 
 if __name__ == "__main__":
