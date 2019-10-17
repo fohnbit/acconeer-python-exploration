@@ -1,14 +1,15 @@
+
 from enum import Enum
 import numpy as np
 from scipy.signal import welch
 from threading import Thread
-from time import sleep
 import subprocess
 import gphoto2 as gp
 import logging
 import os
 from datetime import datetime
 import time
+from threading import Timer
 
 from acconeer_utils.clients import SocketClient, SPIClient, UARTClient
 from acconeer_utils.clients import configs
@@ -17,20 +18,18 @@ from acconeer_utils.structs import configbase
 
 
 HALF_WAVELENGTH = 2.445e-3  # m
-NUM_FFT_BINS = 512
-HISTORY_LENGTH = 2.0  # s
-EST_VEL_HISTORY_LENGTH = HISTORY_LENGTH  # s
-SD_HISTORY_LENGTH = HISTORY_LENGTH  # s
-NUM_SAVED_SEQUENCES = 10
-SEQUENCE_TIMEOUT_COUNT = 10
+NUM_FFT_BINS = 256
 
 WAITFORCOMPLETINGSPEEDLIMITDETECTION = None
 
 # Speedlimit in km/h
-SPEEDLIMIT = 15
+SPEEDLIMIT = 4
 SPEEDLIMIT_TEMP = SPEEDLIMIT
 CAMERA = None
 CONTEXT = None
+MOVEMENT = ""
+LOCKRADAR = None
+
 # setup logging
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 logging.basicConfig(format=log_format, level=logging.INFO)
@@ -38,17 +37,17 @@ logging.basicConfig(format=log_format, level=logging.INFO)
 def get_sensor_config():
     config = configs.SparseServiceConfig()
 
-    config.range_interval = [3.00, 3.20]
-    config.stepsize = 3
+    config.range_interval = [2.04, 2.90]
+    config.stepsize = 2
     config.sampling_mode = configs.SparseServiceConfig.SAMPLING_MODE_A
     config.number_of_subsweeps = NUM_FFT_BINS
-    config.gain = 0.5
-    config.hw_accelerated_average_samples = 60
+    config.gain = 0.7
+    config.hw_accelerated_average_samples = 10
     # config.subsweep_rate = 6e3
 
     # force max frequency
     config.sweep_rate = 200
-    config.experimental_stitching = True
+    config.experimental_stitching = False
 
     return config
     
@@ -72,7 +71,7 @@ def main():
     # setup Camera date and time
     logging.info("set Camera date and time")
     subprocess.call(["gphoto2","--set-config", "datetime=now"])
-    
+
     gp.check_result(gp.use_python_logging())
     CONTEXT = gp.gp_context_new()
     CAMERA = gp.check_result(gp.gp_camera_new())
@@ -94,39 +93,68 @@ def main():
 
     global SPEEDLIMIT_TEMP
     global WAITFORCOMPLETINGSPEEDLIMITDETECTION
-    lastSpeed = 0
+    global MOVEMENT
+    global LOCKRADAR
+
+    lastSpeed = np.nan
     lastDistance = 0
-    movement = "away"
-     
+    curMovement = "away"
+
     while not interrupt_handler.got_signal:
+        # if WAITFORCOMPLETINGSPEEDLIMITDETECTION:
+        #   logging.info("Stop streaming")
+        #   client.stop_streaming()
+        #   time.sleep(20)
+        #   logging.info("Start streaming")
+        #   client.start_streaming()
         info, sweep = client.get_next()
+        if LOCKRADAR:
+            continue
+
         plot_data = processor.process(sweep)
-        
-        speed = (plot_data["speed"]) * 3.6
+
+        speed = (plot_data["speed"])
+
+        if np.isnan(speed) and np.isnan(lastSpeed):
+            continue
+
+        speed = speed * 3.6
         distance = (plot_data["distance"])
-       
-        
-        if distance > lastDistance:
-            movement = "away"
-        else:
-            movement = "towards"
- 
-        if speed > 1 and lastSpeed != speed:
-            logging.info("Speed: " + str(round(speed, 1)) + "km/h in " + str(round(distance, 1)) + "m " + movement)
+
+        if speed > 0.2 and (lastSpeed != speed or distance != lastDistance):
+            if lastDistance != 0 and distance > lastDistance:
+               MOVEMENT = "away"
+               curMovement = MOVEMENT
+            elif lastDistance != 0 and distance < lastDistance:
+               MOVEMENT = "towards"
+               curMovement = MOVEMENT
+            elif lastDistance != 0 and distance == lastDistance:
+               curMovement = "stay"
+            else:
+               curMovement = ""
+
+            logging.info("Speed: " + str(round(speed, 1)) + "km/h in " + str(round(distance, 1)) + "m " + curMovement)
             lastSpeed = speed
-        
+            lastDistance = distance
+        elif speed < 0.4 and lastSpeed != 0:
+            logging.info("No movement")
+            lastSpeed = np.nan
+            lastDistance = 0
+
         if speed > SPEEDLIMIT_TEMP:
             SPEEDLIMIT_TEMP = speed
             logging.info("Maximal current Speed: " + str(SPEEDLIMIT_TEMP))
             if not WAITFORCOMPLETINGSPEEDLIMITDETECTION:
                 WAITFORCOMPLETINGSPEEDLIMITDETECTION = True
-                
+                r = Timer(2.0, lockRadar, (""))
+                r.start()
+
                 threadCaptureImage = Thread(target = captureImage, args=[])
                 threadCaptureImage.start()
-    
+
                 threadSendRadarCatImage = Thread(target = sendRadarCatImage, args=[])
                 threadSendRadarCatImage.start()
-                
+
     print("Disconnecting...")
     client.disconnect()
 
@@ -197,22 +225,15 @@ class Processor:
         self.nperseg = NUM_FFT_BINS // 2
         self.num_noise_est_bins = 3
         noise_est_tc = 1.0
-        self.min_threshold = 4.0
+        self.min_threshold = 3.0
         self.dynamic_threshold = 0.1
 
-        est_vel_history_size = int(round(est_update_rate * EST_VEL_HISTORY_LENGTH))
-        sd_history_size = int(round(est_update_rate * SD_HISTORY_LENGTH))
         num_bins = NUM_FFT_BINS // 2 + 1
         self.noise_est_sf = self.tc_to_sf(noise_est_tc, est_update_rate)
         self.bin_fs = np.fft.rfftfreq(NUM_FFT_BINS) * subsweep_rate
         self.bin_vs = self.bin_fs * HALF_WAVELENGTH
 
-        self.nasd_history = np.zeros([sd_history_size, num_bins])
-        self.est_vel_history = np.full(est_vel_history_size, np.nan)
-        self.belongs_to_last_sequence = np.zeros(est_vel_history_size, dtype=bool)
         self.noise_est = 0
-        self.current_sequence_idle = SEQUENCE_TIMEOUT_COUNT + 1
-        self.sequence_vels = np.zeros(NUM_SAVED_SEQUENCES)
         self.update_idx = 0
 
         self.depths = get_range_depths(sensor_config, session_info)
@@ -270,58 +291,61 @@ class Processor:
         abs_fft = np.abs(fft)
         max_depth_index, max_bin = np.unravel_index(abs_fft.argmax(), abs_fft.shape)
         depth = self.depths[max_depth_index]
-       
+
         # print ("Speed: " + str(est_vel) + " m/s, Distance: " + str(depth))
-        
+
         # Sequence
 
-        self.belongs_to_last_sequence = np.roll(self.belongs_to_last_sequence, -1)
+        # self.belongs_to_last_sequence = np.roll(self.belongs_to_last_sequence, -1)
 
-        if np.isnan(est_vel):
-            self.current_sequence_idle += 1
-        else:
-            if self.current_sequence_idle > SEQUENCE_TIMEOUT_COUNT:
-                self.sequence_vels = np.roll(self.sequence_vels, -1)
-                self.sequence_vels[-1] = est_vel
-                self.belongs_to_last_sequence[:] = False
+        #if np.isnan(est_vel):
+        #    self.current_sequence_idle += 1
+        #else:
+        #    if self.current_sequence_idle > SEQUENCE_TIMEOUT_COUNT:
+        #        self.sequence_vels = np.roll(self.sequence_vels, -1)
+        #        self.sequence_vels[-1] = est_vel
+        #        self.belongs_to_last_sequence[:] = False
 
-            self.current_sequence_idle = 0
-            self.belongs_to_last_sequence[-1] = True
+        #    self.current_sequence_idle = 0
+        #    self.belongs_to_last_sequence[-1] = True
 
-            if est_vel > self.sequence_vels[-1]:
-                self.sequence_vels[-1] = est_vel
+        #    if est_vel > self.sequence_vels[-1]:
+        #        self.sequence_vels[-1] = est_vel
 
         # Data for plots
 
-        self.est_vel_history = np.roll(self.est_vel_history, -1, axis=0)
-        self.est_vel_history[-1] = est_vel
+        #self.est_vel_history = np.roll(self.est_vel_history, -1, axis=0)
+        #self.est_vel_history[-1] = est_vel
 
-        if np.all(np.isnan(self.est_vel_history)):
-            output_vel = 0
-        else:
-            output_vel = np.nanmax(self.est_vel_history)
+        #if np.all(np.isnan(self.est_vel_history)):
+        #    output_vel = 0
+        #else:
+        #    output_vel = np.nanmax(self.est_vel_history)
 
-        self.nasd_history = np.roll(self.nasd_history, -1, axis=0)
-        self.nasd_history[-1] = nasd
+        #self.nasd_history = np.roll(self.nasd_history, -1, axis=0)
+        #self.nasd_history[-1] = nasd
 
-        nasd_temporal_max = np.max(self.nasd_history, axis=0)
+        #nasd_temporal_max = np.max(self.nasd_history, axis=0)
 
-        temporal_max_threshold = max(
-            self.min_threshold, np.max(nasd_temporal_max) * self.dynamic_threshold)
+        #temporal_max_threshold = max(
+        #    self.min_threshold, np.max(nasd_temporal_max) * self.dynamic_threshold)
 
-        self.update_idx += 1
-      
+        #self.update_idx += 1
         return {
-            "sweep": sweep,
-            "sd": nasd_temporal_max,
-            "sd_threshold": temporal_max_threshold,
-            "vel_history": self.est_vel_history,
-            "vel": output_vel,
-            "speed": est_vel,
-            "distance": depth,
-            "sequence_vels": self.sequence_vels,
-            "belongs_to_last_sequence": self.belongs_to_last_sequence,
+             "speed": est_vel,
+             "distance": depth,
         }
+       # return {
+       #     "sweep": sweep,
+       #     "sd": nasd_temporal_max,
+       #     "sd_threshold": temporal_max_threshold,
+       #     "vel_history": self.est_vel_history,
+       #     "vel": output_vel,
+       #     "speed": est_vel,
+       #     "distance": depth,
+       #     "sequence_vels": self.sequence_vels,
+       #     "belongs_to_last_sequence": self.belongs_to_last_sequence,
+       # }
 
 def get_range_depths(sensor_config, session_info):
     range_start = session_info["actual_range_start"]
@@ -355,7 +379,7 @@ def captureImage():
 
 def sendRadarCatImage(): 
     logging.info ("Lock radar until image is sendet")
-    sleep(10)
+    time.sleep(10)
     global WAITFORCOMPLETINGSPEEDLIMITDETECTION
     global SPEEDLIMIT_TEMP
     global SPEEDLIMIT   
@@ -383,6 +407,23 @@ def sendRadarCatImage():
     WAITFORCOMPLETINGSPEEDLIMITDETECTION = None
 
     logging.info ("Release radar lock")
-    
+
+def lockRadar():
+    global LOCKRADAR
+    global MOVEMENT
+    LOCKRADAR = True
+    logging.info("Write movement to file: " + str(MOVEMENT))
+    f = open("movement.txt", "w")
+    if MOVEMENT == "away":
+        MOVEMENT = "A"
+    elif MOVEMENT == "towards":
+        MOVEMENT = "T"
+    else:
+        MOVEMENT = ""
+    f.write(MOVEMENT)
+    f.close()
+    MOVEMENT = ""
+
+
 if __name__ == "__main__":
     main()
