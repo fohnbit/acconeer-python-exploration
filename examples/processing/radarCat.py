@@ -32,9 +32,13 @@ SPEEDLIMIT_TEMP = SPEEDLIMIT
 CAMERA = None
 CONTEXT = None
 # setup logging
-logger.basicConfig(format='%(levelname)s: %(name)s: %(message)s', level=logging.INFO)
+logger = logging.getLogger('radarCat_LOG')
 
 def main():
+    global CAMERA
+    global CONTEXT
+    global logger
+    
     args = example_utils.ExampleArgumentParser(num_sens=1).parse_args()
     example_utils.config_logging(args)
 
@@ -46,9 +50,9 @@ def main():
         port = args.serial_port or example_utils.autodetect_serial_port()
         client = UARTClient(port)
 
+    logger.basicConfig(format='%(levelname)s: %(name)s: %(message)s', level=logging.INFO)
     # setup Camera
-    global CAMERA
-    global CONTEXT
+
     subprocess.call(["gphoto2","--set-config", "datetime=now"])
     
     gp.check_result(gp.use_python_logging())
@@ -323,6 +327,8 @@ def get_range_depths(sensor_config, session_info):
 def captureImage():
     global CAMERA
     global CONTEXT
+    global logger
+    
     current_time = datetime.now()
     logger.info("Capture Image")
     file_path = gp.check_result(gp.gp_camera_capture(
