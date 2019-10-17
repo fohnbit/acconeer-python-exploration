@@ -45,7 +45,7 @@ def main():
     
     # Load the configuration file
     with open("settings.ini") as f:
-    sample_config = f.read()
+        sample_config = f.read()
     config = ConfigParser.RawConfigParser(allow_no_value=True)
     config.readfp(io.BytesIO(sample_config))
     
