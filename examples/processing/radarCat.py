@@ -9,8 +9,6 @@ import logging
 import os
 from datetime import datetime
 import time
-import ConfigParser
-import io
 
 from acconeer_utils.clients import SocketClient, SPIClient, UARTClient
 from acconeer_utils.clients import configs
@@ -29,7 +27,7 @@ SEQUENCE_TIMEOUT_COUNT = 10
 WAITFORCOMPLETINGSPEEDLIMITDETECTION = None
 
 # Speedlimit in km/h
-SPEEDLIMIT = 4
+SPEEDLIMIT = 15
 SPEEDLIMIT_TEMP = SPEEDLIMIT
 CAMERA = None
 CONTEXT = None
@@ -37,20 +35,27 @@ CONTEXT = None
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 logging.basicConfig(format=log_format, level=logging.INFO)
 
+def get_sensor_config():
+    config = configs.SparseServiceConfig()
+
+    config.range_interval = [3.00, 3.20]
+    config.stepsize = 3
+    config.sampling_mode = configs.SparseServiceConfig.SAMPLING_MODE_A
+    config.number_of_subsweeps = NUM_FFT_BINS
+    config.gain = 0.5
+    config.hw_accelerated_average_samples = 60
+    # config.subsweep_rate = 6e3
+
+    # force max frequency
+    config.sweep_rate = 200
+    config.experimental_stitching = True
+
+    return config
+    
 def main():
     global CAMERA
     global CONTEXT
     global logging
-    
-    
-    # Load the configuration file
-    with open("settings.ini") as f:
-        sample_config = f.read()
-    config = ConfigParser.RawConfigParser(allow_no_value=True)
-    config.readfp(io.BytesIO(sample_config))
-    
-    NUM_FFT_BINS = config.get("radar","NUM_FFT_BINS")    
-    
     
     args = example_utils.ExampleArgumentParser(num_sens=1).parse_args()
     example_utils.config_logging(args)
@@ -124,25 +129,6 @@ def main():
                 
     print("Disconnecting...")
     client.disconnect()
-
-
-def get_sensor_config():
-    config = configs.SparseServiceConfig()
-
-    config.range_interval = [3.00, 3.20]
-    config.stepsize = 3
-    config.sampling_mode = configs.SparseServiceConfig.SAMPLING_MODE_A
-    config.number_of_subsweeps = NUM_FFT_BINS
-    config.gain = 0.5
-    config.hw_accelerated_average_samples = 60
-    # config.subsweep_rate = 6e3
-
-    # force max frequency
-    config.sweep_rate = 200
-    config.experimental_stitching = True
-
-    return config
-
 
 class ProcessingConfiguration(configbase.ProcessingConfig):
     VERSION = 1
