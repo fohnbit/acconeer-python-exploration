@@ -33,7 +33,7 @@ CAMERA = None
 CONTEXT = None
 # setup logging
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logging.basicConfig(format='%(levelname)s: %(name)s: %(message)s', level=logging.INFO)
+logging.basicConfig(format=formatter, level=logging.INFO)
 
 def main():
     global CAMERA
