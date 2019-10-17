@@ -52,7 +52,7 @@ def main():
     # setup Camera
     global CAMERA
     global CONTEXT
-    subprocess.call(["gphoto2","--set-config", "datetime= " + str(time.time())])
+    subprocess.call(["gphoto2","--set-config", "datetime=now"])
     
     CONTEXT = gp.gp_context_new()
     CAMERA = gp.check_result(gp.gp_camera_new())
@@ -108,7 +108,7 @@ def main():
 def get_sensor_config():
     config = configs.SparseServiceConfig()
 
-    config.range_interval = [2.00, 2.20]
+    config.range_interval = [3.00, 3.20]
     config.stepsize = 3
     config.sampling_mode = configs.SparseServiceConfig.SAMPLING_MODE_A
     config.number_of_subsweeps = NUM_FFT_BINS
