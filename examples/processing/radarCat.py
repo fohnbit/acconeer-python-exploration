@@ -20,11 +20,11 @@ SD_HISTORY_LENGTH = HISTORY_LENGTH  # s
 NUM_SAVED_SEQUENCES = 10
 SEQUENCE_TIMEOUT_COUNT = 10
 
-waitForCompletingSpeedLimitDetection = None
+WAITFORCOMPLETINGSPEEDLIMITDETECTION = None
 
 # Speedlimit in km/h
-speedLimit = 4
-speedLimitTemp = speedLimit
+SPEEDLIMIT = 4
+SPEEDLIMIT_TEMP = SPEEDLIMIT
 
 def main():
     args = example_utils.ExampleArgumentParser(num_sens=1).parse_args()
@@ -52,8 +52,8 @@ def main():
 
     processor = Processor(sensor_config, processing_config, session_info)
 
-    global speedLimitTemp
-    global waitForCompletingSpeedLimitDetection
+    # global speedLimitTemp
+    # global waitForCompletingSpeedLimitDetection
     lastSpeed = 0
     
     while not interrupt_handler.got_signal:
@@ -64,20 +64,20 @@ def main():
         distance = (plot_data["distance"])
         
         if speed > 1 and lastSpeed != speed:
-            print ("Speed: " + str(speed) + " m/s, Distance: " + str(distance))
+            print ("Speed: " + str(round(speed, 1) + "km/h, Distance: " + str(round(distance, 1) + "m")
             lastSpeed = speed
         
-        if speed > speedLimitTemp:
-            speedLimitTemp = speed
-            print ("Maximal current Speed: " + str(speedLimitTemp))
-            if not waitForCompletingSpeedLimitDetection:
-                waitForCompletingSpeedLimitDetection = True
+        if speed > SPEEDLIMIT_TEMP:
+            SPEEDLIMIT_TEMP = speed
+            print ("Maximal current Speed: " + str(SPEEDLIMIT_TEMP))
+            if not WAITFORCOMPLETINGSPEEDLIMITDETECTION:
+                WAITFORCOMPLETINGSPEEDLIMITDETECTION = True
                 
-                threadCaptureImageFromCamera = Thread(target = captureImageFromCamera)
+                threadCaptureImageFromCamera = Thread(target = captureImageFromCamera, args=[])
                 threadCaptureImageFromCamera.start()
                 threadCaptureImageFromCamera.join()
     
-                threadSendRadarCatImage = Thread(target = sendRadarCatImage)
+                threadSendRadarCatImage = Thread(target = sendRadarCatImage, args=[])
                 threadSendRadarCatImage.start()
                 threadSendRadarCatImage.join()
 
@@ -310,9 +310,9 @@ def captureImageFromCamera():
 def sendRadarCatImage(): 
     print ("Lock radar until image is sendet")
     sleep(10)
-    global waitForCompletingSpeedLimitDetection
-    global speedLimitTemp
-    global speedLimit   
+    # global waitForCompletingSpeedLimitDetection
+    # global speedLimitTemp
+    # global speedLimit   
 
 
     print("Write max Speed to file: " + str(speedLimitTemp))
@@ -328,8 +328,8 @@ def sendRadarCatImage():
     myCmd = './sendmail.sh'
     subprocess.call([myCmd])
 
-    speedLimitTemp = speedLimit
-    waitForCompletingSpeedLimitDetection = None
+    SPEEDLIMIT_TEMP = SPEEDLIMIT
+    WAITFORCOMPLETINGSPEEDLIMITDETECTION = None
 
     print ("Release radar lock")
     
