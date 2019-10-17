@@ -52,8 +52,8 @@ def main():
 
     processor = Processor(sensor_config, processing_config, session_info)
 
-    # global speedLimitTemp
-    # global waitForCompletingSpeedLimitDetection
+    global SPEEDLIMIT_TEMP
+    global WAITFORCOMPLETINGSPEEDLIMITDETECTION
     lastSpeed = 0
     
     while not interrupt_handler.got_signal:
@@ -310,14 +310,14 @@ def captureImageFromCamera():
 def sendRadarCatImage(): 
     print ("Lock radar until image is sendet")
     sleep(10)
-    # global waitForCompletingSpeedLimitDetection
-    # global speedLimitTemp
-    # global speedLimit   
+    global WAITFORCOMPLETINGSPEEDLIMITDETECTION
+    global SPEEDLIMIT_TEMP
+    global SPEEDLIMIT   
 
 
-    print("Write max Speed to file: " + str(speedLimitTemp))
+    print("Write max Speed to file: " + str(SPEEDLIMIT_TEMP))
     f = open("speed.txt", "w")
-    f.write(str(round(speedLimitTemp, 1)) + " km/h")
+    f.write(str(round(SPEEDLIMIT_TEMP, 1)) + " km/h")
     f.close()
     
     print("Start Postprocessing")
