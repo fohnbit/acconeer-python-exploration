@@ -12,7 +12,7 @@ from acconeer_utils.structs import configbase
 
 
 HALF_WAVELENGTH = 2.445e-3  # m
-NUM_FFT_BINS = 128
+NUM_FFT_BINS = 512
 HISTORY_LENGTH = 2.0  # s
 EST_VEL_HISTORY_LENGTH = HISTORY_LENGTH  # s
 SD_HISTORY_LENGTH = HISTORY_LENGTH  # s
@@ -69,12 +69,11 @@ def main():
         if speed > speedLimitTemp:
             speedLimitTemp = speed
             print ("Maximal current Speed: " + str(speedLimitTemp))
-            # if not waitForCompletingSpeedLimitDetection:
-                # waitForCompletingSpeedLimitDetection = True
-                # timer1 = threading.Timer(0.1, captureImageFromCamera) 
-                # timer1.start()
-                # timer2 = threading.Timer(10.0, sendSpeedCatImage)
-                # timer2.start()
+            if not waitForCompletingSpeedLimitDetection:
+                waitForCompletingSpeedLimitDetection = True
+                captureImageFromCamera() 
+                timer2 = threading.Timer(10.0, sendSpeedCatImage)
+                timer2.start()
 
     print("Disconnecting...")
     client.disconnect()
