@@ -45,8 +45,8 @@ def main():
     logging.basicConfig(
         format='%(levelname)s: %(name)s: %(message)s', level=logging.WARNING)
     gp.check_result(gp.use_python_logging())
-
-    subprocess.call(["gphoto2","--set-config", datetime.datetime.now()])
+    current_time = datetime.datetime.now()
+    subprocess.call(["gphoto2","--set-config", current_time])
     
     context = gp.gp_context_new()
     camera = gp.check_result(gp.gp_camera_new())
