@@ -31,6 +31,8 @@ SPEEDLIMIT = 4
 SPEEDLIMIT_TEMP = SPEEDLIMIT
 CAMERA = None
 CONTEXT = None
+# setup logging
+logger.basicConfig(format='%(levelname)s: %(name)s: %(message)s', level=logging.INFO)
 
 def main():
     args = example_utils.ExampleArgumentParser(num_sens=1).parse_args()
@@ -44,16 +46,12 @@ def main():
         port = args.serial_port or example_utils.autodetect_serial_port()
         client = UARTClient(port)
 
-    # setup logging
-    logger.basicConfig(
-        format='%(levelname)s: %(name)s: %(message)s', level=logging.INFO)
-    gp.check_result(gp.use_python_logging())
-    
     # setup Camera
     global CAMERA
     global CONTEXT
     subprocess.call(["gphoto2","--set-config", "datetime=now"])
     
+    gp.check_result(gp.use_python_logging())
     CONTEXT = gp.gp_context_new()
     CAMERA = gp.check_result(gp.gp_camera_new())
     gp.check_result(gp.gp_camera_init(CAMERA, CONTEXT))
