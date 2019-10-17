@@ -47,7 +47,8 @@ def main():
     gp.check_result(gp.use_python_logging())
     
     # setup Camera
-    subprocess.call(["gphoto2","--set-config", datetime.now()])
+    print (time.time())
+    subprocess.call(["gphoto2","--set-config", time.time())])
     
     context = gp.gp_context_new()
     camera = gp.check_result(gp.gp_camera_new())
