@@ -78,16 +78,24 @@ def main():
     global SPEEDLIMIT_TEMP
     global WAITFORCOMPLETINGSPEEDLIMITDETECTION
     lastSpeed = 0
-    
+    lastDistance = 0
+     movement = "away"
+     
     while not interrupt_handler.got_signal:
         info, sweep = client.get_next()
         plot_data = processor.process(sweep)
         
         speed = (plot_data["speed"]) * 3.6
         distance = (plot_data["distance"])
+       
+        
+        if distance > lastDistance:
+            movement = "away"
+        else:
+            movement = "towards"
  
         if speed > 1 and lastSpeed != speed:
-            logging.info("Speed: " + str(round(speed, 1)) + "km/h in " + str(round(distance, 1)) + "m")
+            logging.info("Speed: " + str(round(speed, 1)) + "km/h in " + str(round(distance, 1)) + "m " + movement)
             lastSpeed = speed
         
         if speed > SPEEDLIMIT_TEMP:
