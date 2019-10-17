@@ -124,10 +124,10 @@ def main():
         if speed > 0.2 and (lastSpeed != speed or distance != lastDistance):
             if lastDistance != 0 and distance > lastDistance:
                DIRECTION = "away"
-               curDirection = MOVEMENT
+               curDirection = DIRECTION
             elif lastDistance != 0 and distance < lastDistance:
                DIRECTION = "towards"
-               curDirection = MOVEMENT
+               curDirection = DIRECTION
             elif lastDistance != 0 and distance == lastDistance:
                curDirection = "stay"
             else:
