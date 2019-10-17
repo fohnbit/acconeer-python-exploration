@@ -4,7 +4,9 @@ from scipy.signal import welch
 from threading import Thread
 from time import sleep
 import subprocess
-
+import gphoto2 as gp
+import logging
+import os
 
 from acconeer_utils.clients import SocketClient, SPIClient, UARTClient
 from acconeer_utils.clients import configs
@@ -38,6 +40,14 @@ def main():
         port = args.serial_port or example_utils.autodetect_serial_port()
         client = UARTClient(port)
 
+    # setup Camera
+    logging.basicConfig(
+        format='%(levelname)s: %(name)s: %(message)s', level=logging.WARNING)
+    gp.check_result(gp.use_python_logging())
+    context = gp.gp_context_new()
+    camera = gp.check_result(gp.gp_camera_new())
+    gp.check_result(gp.gp_camera_init(camera, context))
+
     sensor_config = get_sensor_config()
     processing_config = get_processing_config()
     sensor_config.sensor = args.sensors
@@ -62,7 +72,8 @@ def main():
         
         speed = (plot_data["speed"]) * 3.6
         distance = (plot_data["distance"])
-        
+        print ("Speed: " + str(round(speed, 1)) + "km/h, Distance: " + str(round(distance, 1)) + "m, SPEEDLIMIT_TEMP: " + str(SPEEDLIMIT_TEMP))
+ 
         if speed > 1 and lastSpeed != speed:
             print ("Speed: " + str(round(speed, 1)) + "km/h, Distance: " + str(round(distance, 1)) + "m")
             lastSpeed = speed
@@ -73,13 +84,24 @@ def main():
             if not WAITFORCOMPLETINGSPEEDLIMITDETECTION:
                 WAITFORCOMPLETINGSPEEDLIMITDETECTION = True
                 
-                threadCaptureImageFromCamera = Thread(target = captureImageFromCamera, args=[])
-                threadCaptureImageFromCamera.start()
-                threadCaptureImageFromCamera.join()
+                # threadCaptureImageFromCamera = Thread(target = captureImageFromCamera, args=[])
+                # threadCaptureImageFromCamera.start()
+                # threadCaptureImageFromCamera.join()
+                file_path = gp.check_result(gp.gp_camera_capture(
+                    camera, gp.GP_CAPTURE_IMAGE, context))
+                print('Camera file path: {0}/{1}'.format(file_path.folder, file_path.name))
+                target = os.path.join('.', file_path.name)
+                print('Copying image to', target)
+                camera_file = gp.check_result(gp.gp_camera_file_get(
+                        camera, file_path.folder, file_path.name,
+                        gp.GP_FILE_TYPE_NORMAL, context))
+                gp.check_result(gp.gp_file_save(camera_file, target))
+                # subprocess.call(['xdg-open', target])
+                gp.check_result(gp.gp_camera_exit(camera, context))
     
                 threadSendRadarCatImage = Thread(target = sendRadarCatImage, args=[])
                 threadSendRadarCatImage.start()
-                threadSendRadarCatImage.join()
+                # threadSendRadarCatImage.join()
 
     print("Disconnecting...")
     client.disconnect()
