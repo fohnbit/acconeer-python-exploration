@@ -79,7 +79,7 @@ def main():
     global WAITFORCOMPLETINGSPEEDLIMITDETECTION
     lastSpeed = 0
     lastDistance = 0
-     movement = "away"
+    movement = "away"
      
     while not interrupt_handler.got_signal:
         info, sweep = client.get_next()
