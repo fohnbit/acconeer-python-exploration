@@ -32,7 +32,7 @@ SPEEDLIMIT_TEMP = SPEEDLIMIT
 CAMERA = None
 CONTEXT = None
 # setup logging
-log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s')"
+log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 logging.basicConfig(format=log_format, level=logging.INFO)
 
 def main():
