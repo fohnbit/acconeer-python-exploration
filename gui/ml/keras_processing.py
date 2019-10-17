@@ -5,14 +5,17 @@ from keras.layers import (Dense, Dropout, Input, GaussianNoise, Activation, Conv
 from keras.utils import to_categorical
 from keras.callbacks import EarlyStopping, ModelCheckpoint, Callback
 from sklearn.model_selection import train_test_split
+import tensorflow as tf
 
 import numpy as np
-import argparse
+import sys
+import os
 
-from acconeer_utils import example_utils
-import pyqtgraph as pg
-from helper import ErrorFormater
-import tensorflow as tf
+try:
+    import pyqtgraph as pg
+    PYQT_PLOTTING_AVAILABLE = True
+except ImportError:
+    PYQT_PLOTTING_AVAILABLE = False
 
 
 class MachineLearning():
@@ -25,7 +28,6 @@ class MachineLearning():
             "output": None,
             "init_shape":  None,
         }
-        self.format_error = ErrorFormater()
         self.model_params = None
 
     def set_model_dimensionality(self, dim):
@@ -65,7 +67,7 @@ class MachineLearning():
         self.model.compile(
             loss="categorical_crossentropy",
             optimizer="adam",
-            metrics=["accuracy"]
+            metrics=["accuracy"],
         )
 
     def init_model_2D(self, input_dimensions):
@@ -100,7 +102,7 @@ class MachineLearning():
         self.model.compile(
             loss="categorical_crossentropy",
             optimizer="adam",
-            metrics=["accuracy"]
+            metrics=["accuracy"],
         )
 
     def maxpool(self, x):
@@ -410,7 +412,7 @@ class MachineLearning():
                 with self.tf_graph.as_default():
                     self.model._make_predict_function()
         except Exception as e:
-            error_text = self.format_error.error_to_text(e)
+            error_text = self.error_to_text(e)
             message = "Error in load model:<br>{}".format(error_text)
             return {
                 "loaded": False,
@@ -492,6 +494,13 @@ class MachineLearning():
 
         return {"matrix": matrix, "labels": row_labels}
 
+    def error_to_text(self, error):
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        err_text = "File: {}<br>Line: {}<br>Error: {}".format(fname, exc_tb.tb_lineno, error)
+
+        return err_text
+
 
 class TrainCallback(Callback):
     def __init__(self, plot_cb=None, steps_per_epoch=None, stop_cb=None):
@@ -529,6 +538,10 @@ class TrainCallback(Callback):
 
 class KerasPlotting:
     def __init__(self, epoch_history=20):
+
+        if not PYQT_PLOTTING_AVAILABLE:
+            print("Warning: Plotting functionality not available.")
+
         self.epoch_history = epoch_history
         self.first = True
         self.history = {
@@ -572,10 +585,10 @@ class KerasPlotting:
         self.loss_plot_window.addItem(self.progress_loss, ignoreBounds=True)
 
         hp = self.history_plots = {}
-        pen = example_utils.pg_pen_cycler(1)
+        pen = pg.mkPen("#ff7f0e", width=2)
         hp["acc"] = self.acc_plot_window.plot(pen=pen, name="Accuracy")
         hp["loss"] = self.loss_plot_window.plot(pen=pen, name="Loss")
-        pen = example_utils.pg_pen_cycler(2)
+        pen = pg.mkPen("#2ca02c", width=2)
         hp["val_acc"] = self.acc_plot_window.plot(pen=pen, name="Val. Accuracy")
         hp["val_loss"] = self.loss_plot_window.plot(pen=pen, name="Val. Loss")
 
@@ -664,38 +677,3 @@ class KerasPlotting:
 
         self.progress_acc.setText(p_acc)
         self.progress_loss.setText(p_loss)
-
-
-class Arguments():
-    def __init__(self):
-        parser = argparse.ArgumentParser()
-        parser.add_argument("-l", "--load", dest="load",
-                            help="Load training data", default="")
-        parser.add_argument("-e", "--evaluate", dest="evaluate",
-                            help="Sensor", default="")
-        parser.add_argument("-sb", "--save-best", dest="save_best",
-                            help="Save model", default=None)
-        parser.add_argument("-s", "--save", dest="save",
-                            help="Save model", default=None)
-        parser.add_argument("-m", "--model", dest="model",
-                            help="Load model", default=None)
-        parser.add_argument("-t", "--train", dest="train",
-                            help="Sensor", action="store_true")
-
-        args = parser.parse_args()
-        self.load = args.load
-        self.save = args.save
-        self.save_best = args.save_best
-        self.train = args.train
-        self.evaluate = args.evaluate
-        self.model = args.model
-
-    def get_args(self):
-        return self
-
-
-if __name__ == "__main__":
-    arg = Arguments()
-    args = arg.get_args()
-
-    # TODO: add code for Deep learning without GUI
