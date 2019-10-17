@@ -8,6 +8,7 @@ import gphoto2 as gp
 import logging
 import os
 from datetime import datetime
+import time
 
 from acconeer_utils.clients import SocketClient, SPIClient, UARTClient
 from acconeer_utils.clients import configs
@@ -47,8 +48,7 @@ def main():
     gp.check_result(gp.use_python_logging())
     
     # setup Camera
-    print (time.time())
-    subprocess.call(["gphoto2","--set-config", time.time())])
+    subprocess.call(["gphoto2","--set-config", "datetime= " + str(time.time())])
     
     context = gp.gp_context_new()
     camera = gp.check_result(gp.gp_camera_new())
