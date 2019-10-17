@@ -360,6 +360,11 @@ def sendRadarCatImage():
     f.write(str(round(SPEEDLIMIT_TEMP, 1)) + " km/h")
     f.close()
     
+    logging.info("Write Speedlimit to file: " + str(SPEEDLIMIT))
+    f = open("speedLimit.txt", "w")
+    f.write(str(round(SPEEDLIMIT, 1)) + " km/h")
+    f.close()
+    
     logging.info("Start Postprocessing")
     myCmd = './postProcessing.sh'
     subprocess.call([myCmd])
