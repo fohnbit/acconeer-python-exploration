@@ -32,15 +32,13 @@ SPEEDLIMIT_TEMP = SPEEDLIMIT
 CAMERA = None
 CONTEXT = None
 # setup logging
-logger = logging.getLogger('radarCat_LOG')
-logger.setLevel(logging.INFO)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-# logger.setFormatter(formatter)
+logging.basicConfig(format='%(levelname)s: %(name)s: %(message)s', level=logging.INFO)
 
 def main():
     global CAMERA
     global CONTEXT
-    global logger
+    global logging
     
     args = example_utils.ExampleArgumentParser(num_sens=1).parse_args()
     example_utils.config_logging(args)
@@ -53,7 +51,6 @@ def main():
         port = args.serial_port or example_utils.autodetect_serial_port()
         client = UARTClient(port)
 
-    # logger.basicConfig(format='%(levelname)s: %(name)s: %(message)s', level=logging.INFO)
     # setup Camera
 
     subprocess.call(["gphoto2","--set-config", "datetime=now"])
@@ -68,7 +65,7 @@ def main():
     sensor_config.sensor = args.sensors
 
     session_info = client.setup_session(sensor_config)
-    logger.debug(session_info)
+    logging.debug(session_info)
 
     client.start_streaming()
 
@@ -90,12 +87,12 @@ def main():
         # print ("Speed: " + str(round(speed, 1)) + "km/h, Distance: " + str(round(distance, 1)) + "m, SPEEDLIMIT_TEMP: " + str(SPEEDLIMIT_TEMP))
  
         if speed > 1 and lastSpeed != speed:
-            logger.info("Speed: " + str(round(speed, 1)) + "km/h, Distance: " + str(round(distance, 1)) + "m")
+            logging.info("Speed: " + str(round(speed, 1)) + "km/h, Distance: " + str(round(distance, 1)) + "m")
             lastSpeed = speed
         
         if speed > SPEEDLIMIT_TEMP:
             SPEEDLIMIT_TEMP = speed
-            logger.info("Maximal current Speed: " + str(SPEEDLIMIT_TEMP))
+            logging.info("Maximal current Speed: " + str(SPEEDLIMIT_TEMP))
             if not WAITFORCOMPLETINGSPEEDLIMITDETECTION:
                 WAITFORCOMPLETINGSPEEDLIMITDETECTION = True
                 
@@ -330,15 +327,15 @@ def get_range_depths(sensor_config, session_info):
 def captureImage():
     global CAMERA
     global CONTEXT
-    global logger
+    global logging
     
     current_time = datetime.now()
-    logger.info("Capture Image")
+    logging.info("Capture Image")
     file_path = gp.check_result(gp.gp_camera_capture(
         CAMERA, gp.GP_CAPTURE_IMAGE, CONTEXT))
-    logger.info('Camera file path: {0}/{1}'.format(file_path.folder, file_path.name))
+    logging.info('Camera file path: {0}/{1}'.format(file_path.folder, file_path.name))
     target = os.path.join('.', file_path.name)
-    logger.info('Copying image to', target)
+    logging.info('Copying image to', target)
     camera_file = gp.check_result(gp.gp_camera_file_get(
             CAMERA, file_path.folder, file_path.name,
             gp.GP_FILE_TYPE_NORMAL, CONTEXT))
@@ -346,36 +343,36 @@ def captureImage():
     # subprocess.call(['xdg-open', target])
     gp.check_result(gp.gp_camera_exit(CAMERA, CONTEXT))
 
-    logger.info("Write capture date/time to file")
+    logging.info("Write capture date/time to file")
     f = open("captureDateTime.txt", "w")
     f.write(str(current_time))
     f.close()
 
 def sendRadarCatImage(): 
-    logger.info ("Lock radar until image is sendet")
+    logging.info ("Lock radar until image is sendet")
     sleep(10)
     global WAITFORCOMPLETINGSPEEDLIMITDETECTION
     global SPEEDLIMIT_TEMP
     global SPEEDLIMIT   
 
 
-    logger.info("Write max Speed to file: " + str(SPEEDLIMIT_TEMP))
+    logging.info("Write max Speed to file: " + str(SPEEDLIMIT_TEMP))
     f = open("speed.txt", "w")
     f.write(str(round(SPEEDLIMIT_TEMP, 1)) + " km/h")
     f.close()
     
-    logger.info("Start Postprocessing")
+    logging.info("Start Postprocessing")
     myCmd = './postProcessing.sh'
     subprocess.call([myCmd])
     
-    logger.info("Send Email with Attachment")
+    logging.info("Send Email with Attachment")
     myCmd = './sendmail.sh'
     subprocess.call([myCmd])
 
     SPEEDLIMIT_TEMP = SPEEDLIMIT
     WAITFORCOMPLETINGSPEEDLIMITDETECTION = None
 
-    logger.info ("Release radar lock")
+    logging.info ("Release radar lock")
     
 if __name__ == "__main__":
     main()
