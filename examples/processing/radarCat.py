@@ -335,7 +335,7 @@ def captureImage():
         CAMERA, gp.GP_CAPTURE_IMAGE, CONTEXT))
     logging.info('Camera file path: {0}/{1}'.format(file_path.folder, file_path.name))
     target = os.path.join('.', file_path.name)
-    logging.info('Copying image to', target)
+    print ('Copying image to', target)
     camera_file = gp.check_result(gp.gp_camera_file_get(
             CAMERA, file_path.folder, file_path.name,
             gp.GP_FILE_TYPE_NORMAL, CONTEXT))
