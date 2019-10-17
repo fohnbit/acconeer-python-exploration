@@ -45,8 +45,8 @@ def main():
         client = UARTClient(port)
 
     # setup logging
-    logging.basicConfig(
-        format='%(levelname)s: %(name)s: %(message)s', level=logging.WARNING)
+    logger.basicConfig(
+        format='%(levelname)s: %(name)s: %(message)s', level=logging.INFO)
     gp.check_result(gp.use_python_logging())
     
     # setup Camera
@@ -63,7 +63,7 @@ def main():
     sensor_config.sensor = args.sensors
 
     session_info = client.setup_session(sensor_config)
-    print(session_info)
+    logger.debug(session_info)
 
     client.start_streaming()
 
@@ -85,12 +85,12 @@ def main():
         # print ("Speed: " + str(round(speed, 1)) + "km/h, Distance: " + str(round(distance, 1)) + "m, SPEEDLIMIT_TEMP: " + str(SPEEDLIMIT_TEMP))
  
         if speed > 1 and lastSpeed != speed:
-            print ("Speed: " + str(round(speed, 1)) + "km/h, Distance: " + str(round(distance, 1)) + "m")
+            logger.info("Speed: " + str(round(speed, 1)) + "km/h, Distance: " + str(round(distance, 1)) + "m")
             lastSpeed = speed
         
         if speed > SPEEDLIMIT_TEMP:
             SPEEDLIMIT_TEMP = speed
-            print ("Maximal current Speed: " + str(SPEEDLIMIT_TEMP))
+            logger.info("Maximal current Speed: " + str(SPEEDLIMIT_TEMP))
             if not WAITFORCOMPLETINGSPEEDLIMITDETECTION:
                 WAITFORCOMPLETINGSPEEDLIMITDETECTION = True
                 
@@ -326,12 +326,12 @@ def captureImage():
     global CAMERA
     global CONTEXT
     current_time = datetime.now()
-
+    logger.info("Capture Image")
     file_path = gp.check_result(gp.gp_camera_capture(
         CAMERA, gp.GP_CAPTURE_IMAGE, CONTEXT))
-    print('Camera file path: {0}/{1}'.format(file_path.folder, file_path.name))
+    logger.info('Camera file path: {0}/{1}'.format(file_path.folder, file_path.name))
     target = os.path.join('.', file_path.name)
-    print('Copying image to', target)
+    logger.info('Copying image to', target)
     camera_file = gp.check_result(gp.gp_camera_file_get(
             CAMERA, file_path.folder, file_path.name,
             gp.GP_FILE_TYPE_NORMAL, CONTEXT))
@@ -339,36 +339,36 @@ def captureImage():
     # subprocess.call(['xdg-open', target])
     gp.check_result(gp.gp_camera_exit(CAMERA, CONTEXT))
 
-    print("Write capture date/time to file")
+    logger.info("Write capture date/time to file")
     f = open("captureDateTime.txt", "w")
     f.write(str(current_time))
     f.close()
 
 def sendRadarCatImage(): 
-    print ("Lock radar until image is sendet")
+    logger.info ("Lock radar until image is sendet")
     sleep(10)
     global WAITFORCOMPLETINGSPEEDLIMITDETECTION
     global SPEEDLIMIT_TEMP
     global SPEEDLIMIT   
 
 
-    print("Write max Speed to file: " + str(SPEEDLIMIT_TEMP))
+    logger.info("Write max Speed to file: " + str(SPEEDLIMIT_TEMP))
     f = open("speed.txt", "w")
     f.write(str(round(SPEEDLIMIT_TEMP, 1)) + " km/h")
     f.close()
     
-    print("Start Postprocessing")
+    logger.info("Start Postprocessing")
     myCmd = './postProcessing.sh'
     subprocess.call([myCmd])
     
-    print("Send Email with Attachment")
+    logger.info("Send Email with Attachment")
     myCmd = './sendmail.sh'
     subprocess.call([myCmd])
 
     SPEEDLIMIT_TEMP = SPEEDLIMIT
     WAITFORCOMPLETINGSPEEDLIMITDETECTION = None
 
-    print ("Release radar lock")
+    logger.info ("Release radar lock")
     
 if __name__ == "__main__":
     main()
