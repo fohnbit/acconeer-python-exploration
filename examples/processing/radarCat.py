@@ -1,7 +1,8 @@
 from enum import Enum
 import numpy as np
 from scipy.signal import welch
-import threading
+from threading import Thread
+from time import sleep
 import subprocess
 
 
@@ -71,9 +72,14 @@ def main():
             print ("Maximal current Speed: " + str(speedLimitTemp))
             if not waitForCompletingSpeedLimitDetection:
                 waitForCompletingSpeedLimitDetection = True
-                captureImageFromCamera() 
-                timer2 = threading.Timer(10.0, sendSpeedCatImage)
-                timer2.start()
+                
+                threadCaptureImageFromCamera = Thread(target = captureImageFromCamera)
+                threadCaptureImageFromCamera.start()
+                threadCaptureImageFromCamera.join()
+    
+                threadSendRadarCatImage = Thread(target = senRadarCatImage)
+                threadSendRadarCatImage.start()
+                threadSendRadarCatImage.join()
 
     print("Disconnecting...")
     client.disconnect()
@@ -303,6 +309,7 @@ def captureImageFromCamera():
 
 def sendSpeedCatImage(): 
     print ("Lock radar until image is sendet")
+    sleep(10)
     global waitForCompletingSpeedLimitDetection
     global speedLimitTemp
     global speedLimit   
