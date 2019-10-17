@@ -7,6 +7,7 @@ import subprocess
 import gphoto2 as gp
 import logging
 import os
+from datetime import datetime
 
 from acconeer_utils.clients import SocketClient, SPIClient, UARTClient
 from acconeer_utils.clients import configs
@@ -74,7 +75,7 @@ def main():
         
         speed = (plot_data["speed"]) * 3.6
         distance = (plot_data["distance"])
-        print ("Speed: " + str(round(speed, 1)) + "km/h, Distance: " + str(round(distance, 1)) + "m, SPEEDLIMIT_TEMP: " + str(SPEEDLIMIT_TEMP))
+        # print ("Speed: " + str(round(speed, 1)) + "km/h, Distance: " + str(round(distance, 1)) + "m, SPEEDLIMIT_TEMP: " + str(SPEEDLIMIT_TEMP))
  
         if speed > 1 and lastSpeed != speed:
             print ("Speed: " + str(round(speed, 1)) + "km/h, Distance: " + str(round(distance, 1)) + "m")
@@ -85,10 +86,8 @@ def main():
             print ("Maximal current Speed: " + str(SPEEDLIMIT_TEMP))
             if not WAITFORCOMPLETINGSPEEDLIMITDETECTION:
                 WAITFORCOMPLETINGSPEEDLIMITDETECTION = True
+                current_time = datetime.datetime.now()
                 
-                # threadCaptureImageFromCamera = Thread(target = captureImageFromCamera, args=[])
-                # threadCaptureImageFromCamera.start()
-                # threadCaptureImageFromCamera.join()
                 file_path = gp.check_result(gp.gp_camera_capture(
                     camera, gp.GP_CAPTURE_IMAGE, context))
                 print('Camera file path: {0}/{1}'.format(file_path.folder, file_path.name))
@@ -100,6 +99,11 @@ def main():
                 gp.check_result(gp.gp_file_save(camera_file, target))
                 # subprocess.call(['xdg-open', target])
                 gp.check_result(gp.gp_camera_exit(camera, context))
+    
+                print("Write capture date/time to file")
+                f = open("captureDateTime.txt", "w")
+                f.write(current_time)
+                f.close()
     
                 threadSendRadarCatImage = Thread(target = sendRadarCatImage, args=[])
                 threadSendRadarCatImage.start()
@@ -325,11 +329,6 @@ def get_range_depths(sensor_config, session_info):
     range_end = range_start + session_info["actual_range_length"]
     num_depths = session_info["data_length"] // sensor_config.number_of_subsweeps
     return np.linspace(range_start, range_end, num_depths)
-
-def captureImageFromCamera(): 
-    print("Trigger Canon EOS80D\n")
-    myCmd = './captureImage.sh'
-    subprocess.call([myCmd])
 
 def sendRadarCatImage(): 
     print ("Lock radar until image is sendet")

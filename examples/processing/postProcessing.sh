@@ -1,4 +1,5 @@
 #!/bin/bash
+exif capt0000.jpg > exif.txt
 
 datetime=$( gawk 'BEGIN {FS="|"}  $1 ~ /Datum und Uhrzeit  / {print $2}' exif.txt )
 echo $datetime
