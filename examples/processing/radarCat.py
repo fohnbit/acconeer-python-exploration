@@ -42,6 +42,7 @@ def main():
     
     args = example_utils.ExampleArgumentParser(num_sens=1).parse_args()
     example_utils.config_logging(args)
+    logging.info("radarCat starting with args " + args)
 
     if args.socket_addr:
         client = SocketClient(args.socket_addr)
@@ -51,8 +52,8 @@ def main():
         port = args.serial_port or example_utils.autodetect_serial_port()
         client = UARTClient(port)
 
-    # setup Camera
-
+    # setup Camera date and time
+    logging.info("set Camera date and time")
     subprocess.call(["gphoto2","--set-config", "datetime=now"])
     
     gp.check_result(gp.use_python_logging())
@@ -65,7 +66,7 @@ def main():
     sensor_config.sensor = args.sensors
 
     session_info = client.setup_session(sensor_config)
-    logging.debug(session_info)
+    logging.info(session_info)
 
     client.start_streaming()
 
@@ -84,10 +85,9 @@ def main():
         
         speed = (plot_data["speed"]) * 3.6
         distance = (plot_data["distance"])
-        # print ("Speed: " + str(round(speed, 1)) + "km/h, Distance: " + str(round(distance, 1)) + "m, SPEEDLIMIT_TEMP: " + str(SPEEDLIMIT_TEMP))
  
         if speed > 1 and lastSpeed != speed:
-            logging.info("Speed: " + str(round(speed, 1)) + "km/h, Distance: " + str(round(distance, 1)) + "m")
+            logging.info("Speed: " + str(round(speed, 1)) + "km/h in " + str(round(distance, 1)) + "m")
             lastSpeed = speed
         
         if speed > SPEEDLIMIT_TEMP:
