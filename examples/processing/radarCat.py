@@ -47,7 +47,6 @@ def get_sensor_config():
     # force max frequency
     config.sweep_rate = 200
     config.experimental_stitching = False
-git
     return config
     
 def main():
