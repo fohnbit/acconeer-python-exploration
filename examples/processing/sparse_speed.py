@@ -37,6 +37,7 @@ def main():
     sensor_config.sensor = args.sensors
 
     session_info = client.setup_session(sensor_config)
+    print (session_info)
 
     pg_updater = PGUpdater(sensor_config, processing_config, session_info)
     pg_process = PGProcess(pg_updater)
@@ -67,11 +68,11 @@ def main():
 def get_sensor_config():
     config = configs.SparseServiceConfig()
 
-    config.range_interval = [0.30, 0.48]
-    config.stepsize = 3
+    config.range_interval = [3.2, 4.0]
+    config.stepsize = 2
     config.sampling_mode = configs.SparseServiceConfig.SAMPLING_MODE_A
-    config.number_of_subsweeps = 512
-    config.gain = 0.5
+    config.number_of_subsweeps = 256
+    config.gain = 0.6
     config.hw_accelerated_average_samples = 60
     # config.subsweep_rate = 6e3
 
@@ -150,7 +151,7 @@ class Processor:
         self.fft_length = (self.num_subsweeps // 2) * FFT_OVERSAMPLING_FACTOR
         self.num_noise_est_bins = 3
         noise_est_tc = 1.0
-        self.min_threshold = 4.0
+        self.min_threshold = 2.0
         self.dynamic_threshold = 0.1
 
         self.sequence_timeout_count = int(round(SEQUENCE_TIMEOUT_LENGTH * est_update_rate))
@@ -168,6 +169,8 @@ class Processor:
         self.current_sequence_idle = self.sequence_timeout_count + 1
         self.sequence_vels = np.zeros(NUM_SAVED_SEQUENCES)
         self.update_idx = 0
+        
+        self.depths = get_range_depths(sensor_config, session_info)
 
         self.update_processing_config(processing_config)
 
@@ -240,6 +243,13 @@ class Processor:
         self.est_vel_history = np.roll(self.est_vel_history, -1, axis=0)
         self.est_vel_history[-1] = est_vel
 
+        if est_vel > 0.2:
+            fft = np.fft.rfft(zero_mean_sweep.T * np.hanning(sweep.shape[0]), axis=1)
+            abs_fft = np.abs(fft)
+            max_depth_index, max_bin = np.unravel_index(abs_fft.argmax(), abs_fft.shape)
+            depth = self.depths[max_depth_index]
+            print (str(round(est_vel, 1)) + "m/s at " + str(round(depth ,1)) + "m")
+            
         if np.all(np.isnan(self.est_vel_history)):
             output_vel = None
         else:

@@ -18,7 +18,6 @@ from acconeer_utils.structs import configbase
 
 
 HALF_WAVELENGTH = 2.445e-3  # m
-NUM_FFT_BINS = 256
 
 WAITFORCOMPLETINGSPEEDLIMITDETECTION = None
 
@@ -37,18 +36,18 @@ logging.basicConfig(format=log_format, level=logging.INFO)
 def get_sensor_config():
     config = configs.SparseServiceConfig()
 
-    config.range_interval = [2.04, 2.90]
+    config.range_interval = [2.1, 3.0]
     config.stepsize = 2
     config.sampling_mode = configs.SparseServiceConfig.SAMPLING_MODE_A
     config.number_of_subsweeps = NUM_FFT_BINS
-    config.gain = 0.7
-    config.hw_accelerated_average_samples = 10
+    config.gain = 0.6
+    config.hw_accelerated_average_samples = 60
     # config.subsweep_rate = 6e3
 
     # force max frequency
     config.sweep_rate = 200
     config.experimental_stitching = False
-
+git
     return config
     
 def main():
@@ -125,12 +124,12 @@ def main():
 
         if speed > 0.2 and (lastSpeed != speed or distance != lastDistance):
             if lastDistance != 0 and distance > lastDistance:
-               if !gotDirection:
+               if not gotDirection:
                     DIRECTION = "away"
                     gotDirection = True
                curDirection = "away"
             elif lastDistance != 0 and distance < lastDistance:
-                if !gotDirection:
+                if not gotDirection:
                     DIRECTION = "towards"
                     gotDirection = True
                 curDirection = "towards"
@@ -225,23 +224,20 @@ get_processing_config = ProcessingConfiguration
 
 class Processor:
     def __init__(self, sensor_config, processing_config, session_info):
+        self.num_subsweeps = sensor_config.number_of_subsweeps
         subsweep_rate = session_info["actual_subsweep_rate"]
-        est_update_rate = subsweep_rate / sensor_config.number_of_subsweeps
+        est_update_rate = subsweep_rate / self.num_subsweeps
 
-        self.nperseg = NUM_FFT_BINS // 2
+        self.fft_length = (self.num_subsweeps // 2) * FFT_OVERSAMPLING_FACTOR
+
         self.num_noise_est_bins = 3
         noise_est_tc = 1.0
-        self.min_threshold = 3.0
+        self.min_threshold = 2.5
         self.dynamic_threshold = 0.1
-
-        num_bins = NUM_FFT_BINS // 2 + 1
         self.noise_est_sf = self.tc_to_sf(noise_est_tc, est_update_rate)
-        self.bin_fs = np.fft.rfftfreq(NUM_FFT_BINS) * subsweep_rate
+        self.bin_fs = np.fft.rfftfreq(self.fft_length) * subsweep_rate
         self.bin_vs = self.bin_fs * HALF_WAVELENGTH
-
-        self.noise_est = 0
         self.update_idx = 0
-
         self.depths = get_range_depths(sensor_config, session_info)
         
         self.update_processing_config(processing_config)
@@ -265,10 +261,10 @@ class Processor:
 
         _, psds = welch(
                 zero_mean_sweep,
-                nperseg=self.nperseg,
+                nperseg=self.num_subsweeps // 2,
                 detrend=False,
                 axis=0,
-                nfft=NUM_FFT_BINS,
+                nfft=self.fft_length,
                 )
 
         psd = np.max(psds, axis=1)
@@ -297,62 +293,14 @@ class Processor:
         abs_fft = np.abs(fft)
         max_depth_index, max_bin = np.unravel_index(abs_fft.argmax(), abs_fft.shape)
         depth = self.depths[max_depth_index]
+        
+        self.update_idx += 1
 
-        # print ("Speed: " + str(est_vel) + " m/s, Distance: " + str(depth))
-
-        # Sequence
-
-        # self.belongs_to_last_sequence = np.roll(self.belongs_to_last_sequence, -1)
-
-        #if np.isnan(est_vel):
-        #    self.current_sequence_idle += 1
-        #else:
-        #    if self.current_sequence_idle > SEQUENCE_TIMEOUT_COUNT:
-        #        self.sequence_vels = np.roll(self.sequence_vels, -1)
-        #        self.sequence_vels[-1] = est_vel
-        #        self.belongs_to_last_sequence[:] = False
-
-        #    self.current_sequence_idle = 0
-        #    self.belongs_to_last_sequence[-1] = True
-
-        #    if est_vel > self.sequence_vels[-1]:
-        #        self.sequence_vels[-1] = est_vel
-
-        # Data for plots
-
-        #self.est_vel_history = np.roll(self.est_vel_history, -1, axis=0)
-        #self.est_vel_history[-1] = est_vel
-
-        #if np.all(np.isnan(self.est_vel_history)):
-        #    output_vel = 0
-        #else:
-        #    output_vel = np.nanmax(self.est_vel_history)
-
-        #self.nasd_history = np.roll(self.nasd_history, -1, axis=0)
-        #self.nasd_history[-1] = nasd
-
-        #nasd_temporal_max = np.max(self.nasd_history, axis=0)
-
-        #temporal_max_threshold = max(
-        #    self.min_threshold, np.max(nasd_temporal_max) * self.dynamic_threshold)
-
-        #self.update_idx += 1
         return {
              "speed": est_vel,
              "distance": depth,
         }
-       # return {
-       #     "sweep": sweep,
-       #     "sd": nasd_temporal_max,
-       #     "sd_threshold": temporal_max_threshold,
-       #     "vel_history": self.est_vel_history,
-       #     "vel": output_vel,
-       #     "speed": est_vel,
-       #     "distance": depth,
-       #     "sequence_vels": self.sequence_vels,
-       #     "belongs_to_last_sequence": self.belongs_to_last_sequence,
-       # }
-
+      
 def get_range_depths(sensor_config, session_info):
     range_start = session_info["actual_range_start"]
     range_end = range_start + session_info["actual_range_length"]
