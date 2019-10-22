@@ -18,7 +18,7 @@ from acconeer_utils.structs import configbase
 
 
 HALF_WAVELENGTH = 2.445e-3  # m
-
+FFT_OVERSAMPLING_FACTOR = 4
 WAITFORCOMPLETINGSPEEDLIMITDETECTION = None
 
 # Speedlimit in km/h
@@ -39,7 +39,7 @@ def get_sensor_config():
     config.range_interval = [2.1, 3.0]
     config.stepsize = 2
     config.sampling_mode = configs.SparseServiceConfig.SAMPLING_MODE_A
-    config.number_of_subsweeps = NUM_FFT_BINS
+    config.number_of_subsweeps = 256
     config.gain = 0.6
     config.hw_accelerated_average_samples = 60
     # config.subsweep_rate = 6e3
