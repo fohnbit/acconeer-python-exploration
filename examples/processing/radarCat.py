@@ -238,7 +238,7 @@ class Processor:
         self.bin_vs = self.bin_fs * HALF_WAVELENGTH
         self.update_idx = 0
         self.depths = get_range_depths(sensor_config, session_info)
-        
+        self.noise_est = 0
         self.update_processing_config(processing_config)
 
     def update_processing_config(self, processing_config):
