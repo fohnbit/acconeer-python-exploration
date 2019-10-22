@@ -336,7 +336,7 @@ def sendRadarCatImage():
     global WAITFORCOMPLETINGSPEEDLIMITDETECTION
     global SPEEDLIMIT_TEMP
     global SPEEDLIMIT   
-
+    global LOCKRADAR
 
     logging.info("Write max Speed to file: " + str(SPEEDLIMIT_TEMP))
     f = open("speed.txt", "w")
@@ -358,7 +358,7 @@ def sendRadarCatImage():
 
     SPEEDLIMIT_TEMP = SPEEDLIMIT
     WAITFORCOMPLETINGSPEEDLIMITDETECTION = None
-
+    LOCKRADAR = False
     logging.info ("Release radar lock")
 
 def lockRadar():
