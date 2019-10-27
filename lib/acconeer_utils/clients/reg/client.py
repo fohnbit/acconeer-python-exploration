@@ -6,6 +6,7 @@ import queue
 import signal
 import traceback
 import platform
+import socket
 
 from acconeer_utils.clients.base import BaseClient, ClientError
 from acconeer_utils.clients.reg import protocol, utils
@@ -28,10 +29,23 @@ class RegClient(BaseClient):
         super().__init__(**kwargs)
 
         if platform.system().lower() == "windows":
-            print ("######################### HERE #########################")
-            self._link = links.SocketLink(port)
+            try:
+                socket.inet_aton(port)
+                # IP
+                print ("Itentify IP address instead of a Com Port")
+                self._link = links.SocketLink(port)
+            except socket.error:
+                # Com Port
+                self._link = links.SerialLink(port)
         else:
-            self._link = links.SerialProcessLink(port)
+            try:
+                socket.inet_aton(port)
+                # IP
+                print ("Itentify IP address instead of a Com Port")
+                self._link = links.SocketLink(port)
+            except socket.error:
+                # Com Port
+                self._link = links.SerialProcessLink(port)
 
         self.override_baudrate = kwargs.get("override_baudrate")
 
