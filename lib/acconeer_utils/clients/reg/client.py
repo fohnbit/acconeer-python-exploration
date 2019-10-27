@@ -28,7 +28,8 @@ class RegClient(BaseClient):
         super().__init__(**kwargs)
 
         if platform.system().lower() == "windows":
-            self._link = links.SerialLink(port)
+            print ("######################### HERE #########################")
+            self._link = links.SocketLink(port)
         else:
             self._link = links.SerialProcessLink(port)
 

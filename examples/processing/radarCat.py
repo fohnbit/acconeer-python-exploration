@@ -4,7 +4,7 @@ import numpy as np
 from scipy.signal import welch
 from threading import Thread
 import subprocess
-import gphoto2 as gp
+import configparser
 import logging
 import os
 from datetime import datetime
@@ -20,6 +20,7 @@ from acconeer_utils.structs import configbase
 HALF_WAVELENGTH = 2.445e-3  # m
 FFT_OVERSAMPLING_FACTOR = 4
 WAITFORCOMPLETINGSPEEDLIMITDETECTION = None
+SETTINGS = configparser.ConfigParser()
 
 # Speedlimit in km/h
 SPEEDLIMIT = 15
@@ -35,17 +36,18 @@ logging.basicConfig(format=log_format, level=logging.INFO)
 
 def get_sensor_config():
     config = configs.SparseServiceConfig()
-
-    config.range_interval = [2.1, 3.0]
-    config.stepsize = 2
+    
+    radar = SETTINGS["Sensor"]
+    config.range_interval = [float(radar["range_start"]), float(radar["range_end"])]
+    config.stepsize = int(radar["stepsize"])
     config.sampling_mode = configs.SparseServiceConfig.SAMPLING_MODE_A
-    config.number_of_subsweeps = 256
-    config.gain = 0.6
-    config.hw_accelerated_average_samples = 60
+    config.number_of_subsweeps = int(radar["number_of_subsweeps"])
+    config.gain = float(radar["gain"])
+    config.hw_accelerated_average_samples = int(radar["hw_accelerated_average_samples"])
     # config.subsweep_rate = 6e3
 
     # force max frequency
-    config.sweep_rate = 200
+    config.sweep_rate = int(radar["sweep_rate"])
     config.experimental_stitching = False
     return config
     
@@ -53,6 +55,10 @@ def main():
     global CAMERA
     global CONTEXT
     global logging
+    global SETTINGS
+    
+    SETTINGS.read("settings.ini")
+    SPEEDLIMIT = SETTINGS.get("Speed","Limit")
     
     args = example_utils.ExampleArgumentParser(num_sens=1).parse_args()
     example_utils.config_logging(args)
@@ -67,13 +73,30 @@ def main():
         client = UARTClient(port)
 
     # setup Camera date and time
-    logging.info("set Camera date and time")
-    subprocess.call(["gphoto2","--set-config", "datetime=now"])
+    if os.name != 'nt':
+        logging.info("set Camera date and time")
+        callback_obj = gp.check_result(gp.use_python_logging())
+        # open camera connection
+        CAMERA = gp.check_result(gp.gp_camera_new())
+        gp.check_result(gp.gp_camera_init(CAMERA))
+        # get camera details
+        abilities = gp.check_result(gp.gp_camera_get_abilities(CAMERA))
+        # get configuration tree
+        camConfig = gp.check_result(gp.gp_camera_get_config(CAMERA))
+        
+        # find the date/time setting config item and set it
+        if set_datetime(camConfig, abilities.model):
+            # apply the changed config
+            gp.check_result(gp.gp_camera_set_config(CAMERA, camConfig))
+        else:
+            logging.error("Could not set date & time")
+        
+        # subprocess.call(["gphoto2","--set-config", "datetime=now"])
 
-    gp.check_result(gp.use_python_logging())
-    CONTEXT = gp.gp_context_new()
-    CAMERA = gp.check_result(gp.gp_camera_new())
-    gp.check_result(gp.gp_camera_init(CAMERA, CONTEXT))
+        # gp.check_result(gp.use_python_logging())
+        # CONTEXT = gp.gp_context_new()
+        # CAMERA = gp.check_result(gp.gp_camera_new())
+        # gp.check_result(gp.gp_camera_init(CAMERA, CONTEXT))
 
     sensor_config = get_sensor_config()
     processing_config = get_processing_config()
@@ -161,6 +184,7 @@ def main():
 
     print("Disconnecting...")
     client.disconnect()
+    CAMERA.exit()
 
 class ProcessingConfiguration(configbase.ProcessingConfig):
     VERSION = 1
@@ -223,16 +247,19 @@ get_processing_config = ProcessingConfiguration
 
 class Processor:
     def __init__(self, sensor_config, processing_config, session_info):
+        proc = SETTINGS["Proc"]
+    
         self.num_subsweeps = sensor_config.number_of_subsweeps
         subsweep_rate = session_info["actual_subsweep_rate"]
         est_update_rate = subsweep_rate / self.num_subsweeps
 
         self.fft_length = (self.num_subsweeps // 2) * FFT_OVERSAMPLING_FACTOR
 
-        self.num_noise_est_bins = 3
-        noise_est_tc = 1.0
-        self.min_threshold = 2.5
-        self.dynamic_threshold = 0.1
+        self.num_noise_est_bins = int(proc["num_noise_est_bins"])
+        noise_est_tc = float(proc["noise_est_tc"])
+        self.min_threshold = float(proc["min_threshold"])
+        self.dynamic_threshold = float(proc["dynamic_threshold"])
+        
         self.noise_est_sf = self.tc_to_sf(noise_est_tc, est_update_rate)
         self.bin_fs = np.fft.rfftfreq(self.fft_length) * subsweep_rate
         self.bin_vs = self.bin_fs * HALF_WAVELENGTH
@@ -307,23 +334,21 @@ def get_range_depths(sensor_config, session_info):
     return np.linspace(range_start, range_end, num_depths)
     
 def captureImage():
+    if os.name != 'nt':
+        return
     global CAMERA
     global CONTEXT
     global logging
     
     current_time = datetime.now()
     logging.info("Capture Image")
-    file_path = gp.check_result(gp.gp_camera_capture(
-        CAMERA, gp.GP_CAPTURE_IMAGE, CONTEXT))
+    file_path = camera.capture(gp.GP_CAPTURE_IMAGE)
     logging.info('Camera file path: {0}/{1}'.format(file_path.folder, file_path.name))
     target = os.path.join('.', file_path.name)
-    print ('Copying image to', target)
-    camera_file = gp.check_result(gp.gp_camera_file_get(
-            CAMERA, file_path.folder, file_path.name,
-            gp.GP_FILE_TYPE_NORMAL, CONTEXT))
-    gp.check_result(gp.gp_file_save(camera_file, target))
-    # subprocess.call(['xdg-open', target])
-    gp.check_result(gp.gp_camera_exit(CAMERA, CONTEXT))
+    logging.info('Copying image to', target)
+    camera_file = camera.file_get(
+        file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL)
+    camera_file.save(target)
 
     logging.info("Write capture date/time to file")
     f = open("captureDateTime.txt", "w")
@@ -332,7 +357,7 @@ def captureImage():
 
 def sendRadarCatImage(): 
     logging.info ("Lock radar until image is sendet")
-    time.sleep(10)
+    time.sleep(SETTINGS.get("Misc","lock_radar"))
     global WAITFORCOMPLETINGSPEEDLIMITDETECTION
     global SPEEDLIMIT_TEMP
     global SPEEDLIMIT   
@@ -377,6 +402,30 @@ def lockRadar():
     f.close()
     DIRECTION = ""
 
+def set_datetime(config, model):
+    if model == 'Canon EOS 80D':
+        OK, date_config = gp.gp_widget_get_child_by_name(config, 'datetimeutc')
+        if OK >= gp.GP_OK:
+            now = int(time.time())
+            gp.check_result(gp.gp_widget_set_value(date_config, now))
+            return True
+    OK, sync_config = gp.gp_widget_get_child_by_name(config, 'syncdatetime')
+    if OK >= gp.GP_OK:
+        gp.check_result(gp.gp_widget_set_value(sync_config, 1))
+        return True
+    OK, date_config = gp.gp_widget_get_child_by_name(config, 'datetime')
+    if OK >= gp.GP_OK:
+        widget_type = gp.check_result(gp.gp_widget_get_type(date_config))
+        if widget_type == gp.GP_WIDGET_DATE:
+            now = int(time.time())
+            gp.check_result(gp.gp_widget_set_value(date_config, now))
+        else:
+            now = time.strftime('%Y-%m-%d %H:%M:%S')
+            gp.check_result(gp.gp_widget_set_value(date_config, now))
+        return True
+    return False
 
 if __name__ == "__main__":
+    if os.name != 'nt':
+        import gphoto2 as gp
     main()
