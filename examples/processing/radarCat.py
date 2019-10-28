@@ -399,9 +399,9 @@ def captureImage():
     
     exposure = tags["EXIF ExposureTime"]
     print (exposure)
-    iso = tags["EXIF ExposureTime"]
+    iso = tags["EXIF ISOSpeedRatings"]
     print (iso)
-    aperture = eval(tags["EXIF ExposureTime"])
+    aperture = eval(tags["EXIF FNumber"])
     print (aperture)
     focal = tags["EXIF FocalLength"] + " mm"   
     print (focal)
