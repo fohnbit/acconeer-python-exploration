@@ -373,10 +373,10 @@ def captureImage():
     with open('settings.ini', 'w') as configfile:
         SETTINGS.write(configfile)
         
-    logging.info("Write capture date/time to file")
-    f = open(IMAGE_FILE_NAME + ".ini", "w")
-    f.write("[data]\n")
-    f.write("os_capture_time=" + str(current_time) + "\n")
+    # logging.info("Write capture date/time to file")
+    # f = open(IMAGE_FILE_NAME + ".ini", "w")
+    # f.write("[data]\n")
+    # f.write("os_capture_time=" + str(current_time) + "\n")
 
     if DIRECTION == "away":
         dir = "A"
@@ -386,12 +386,12 @@ def captureImage():
         dir = ""
     DIRECTION = ""
     
-    logging.info("Write Speedlimit to file: " + str(SPEEDLIMIT))
-    f.write("speed_limit=" + str(round(SPEEDLIMIT, 1)) + " km/h\n")
-    f.close()
+    # logging.info("Write Speedlimit to file: " + str(SPEEDLIMIT))
+    # f.write("speed_limit=" + str(round(SPEEDLIMIT, 1)) + " km/h\n")
+    # f.close()
     
-    logging.info("Start Postprocessing")
-    myCmd = './postProcessing.sh'
+    # logging.info("Start Postprocessing")
+    # myCmd = './postProcessing.sh'
     
     exif = get_file_exif(CAMERA, IMAGE_FILE_NAME + ".jpg")
     print (exif)
@@ -500,5 +500,5 @@ def sendEmail(speedlimit, image_file_name):
 if __name__ == "__main__":
     if os.name != 'nt':
         import gphoto2 as gp 
-
+    
     main()
