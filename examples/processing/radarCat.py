@@ -394,8 +394,13 @@ def captureImage():
     # logging.info("Start Postprocessing")
     # myCmd = './postProcessing.sh'
     
-    exif = exifread.process_file(IMAGE_FILE_NAME + ".jpg")
-    print (exif)
+    f = open(IMAGE_FILE_NAME + ".jpg", 'rb')
+    exif = exifread.process_file(f)
+   
+    for tag in tags.keys():
+        if tag not in ('JPEGThumbnail', 'TIFFThumbnail', 'Filename', 'EXIF MakerNote'):
+            print "Key: %s, value %s" % (tag, tags[tag])
+        
     exposure = "--"
     iso = "--"
     aperture = "--"
