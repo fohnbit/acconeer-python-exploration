@@ -450,10 +450,13 @@ def set_datetime(config, model):
     return False
 
 def sendEmail():
-    subject = "An email with attachment from Python"
-    body = "This is an email with attachment sent from Python"
-    sender_email = "my@gmail.com"
-    receiver_email = "your@gmail.com"
+    global IMAGE_FILE_NAME
+    global SPEEDLIMIT
+    
+    subject = "Blitzerfoto von radarCat"
+    body = "Blitzerfoto mit " + str(SPEEDLIMIT)
+    sender_email = "h.hoe@gedomo.com"
+    receiver_email = "officd@gedomo.com"
     password = input("Type your password and press enter:")
 
     # Create a multipart message and set headers
