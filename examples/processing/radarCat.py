@@ -458,6 +458,9 @@ def captureImage():
     args = shlex.split(myCmd)
     subprocess.call(args)
     
+    # remove old images
+    os.remove(IMAGE_FILE_NAME + ".jpg")
+    
     # sende image by email
     logging.info("Send Email with Attachment")
     sendEmail(SPEEDLIMIT, IMAGE_FILE_NAME)
