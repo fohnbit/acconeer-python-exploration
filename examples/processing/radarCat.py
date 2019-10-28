@@ -355,6 +355,8 @@ def captureImage():
     global logging
     global SETTINGS
     global DIRECTION
+    global SPEEDLIMIT_TEMP
+    global SPEEDLIMIT
     
     imageCounter = int(SETTINGS["Camera"]["count"])
     imageCounter = imageCounter + 1
