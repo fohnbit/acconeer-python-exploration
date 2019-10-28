@@ -47,7 +47,7 @@ LOCK = None
 SENSOR_CONFIG = None
 
 # setup logging
-log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+log_format = "%(asctime)s - %(levelname)s - %(message)s"
 logging.basicConfig(format=log_format, level=logging.INFO)
 
 def signal_handler(sig, frame):
