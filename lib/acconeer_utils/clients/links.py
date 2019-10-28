@@ -62,6 +62,8 @@ class SocketLink(BaseLink):
         self._sock.settimeout(self._timeout)
 
         try:
+            print (self._host)
+            print (self._PORT)
             self._sock.connect((self._host, self._PORT))
         except OSError as e:
             self._sock = None

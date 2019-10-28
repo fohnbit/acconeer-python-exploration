@@ -1,4 +1,4 @@
-
+import email, smtplib, ssl
 from enum import Enum
 import numpy as np
 from scipy.signal import welch
@@ -16,10 +16,15 @@ from acconeer_utils.clients import configs
 from acconeer_utils import example_utils
 from acconeer_utils.structs import configbase
 
+from email import encoders
+from email.mime.base import MIMEBase
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
 
 HALF_WAVELENGTH = 2.445e-3  # m
 FFT_OVERSAMPLING_FACTOR = 4
-WAITFORCOMPLETINGSPEEDLIMITDETECTION = None
+DETECTION_IN_PROGRESS = None
 SETTINGS = configparser.ConfigParser()
 
 # Speedlimit in km/h
@@ -28,7 +33,7 @@ SPEEDLIMIT_TEMP = SPEEDLIMIT
 CAMERA = None
 CONTEXT = None
 DIRECTION = ""
-LOCKRADAR = None
+IMAGE_FILE_NAME = ""
 
 # setup logging
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -56,6 +61,7 @@ def main():
     global CONTEXT
     global logging
     global SETTINGS
+    global RESTART_STREAMING
     
     SETTINGS.read("settings.ini")
     SPEEDLIMIT = SETTINGS.get("Speed","Limit")
@@ -113,7 +119,7 @@ def main():
     processor = Processor(sensor_config, processing_config, session_info)
 
     global SPEEDLIMIT_TEMP
-    global WAITFORCOMPLETINGSPEEDLIMITDETECTION
+    global DETECTION_IN_PROGRESS
     global DIRECTION
     global LOCKRADAR
 
@@ -123,17 +129,16 @@ def main():
     gotDirection = False
 
     while not interrupt_handler.got_signal:
-        # if WAITFORCOMPLETINGSPEEDLIMITDETECTION:
-        #   logging.info("Stop streaming")
-        #   client.stop_streaming()
-        #   time.sleep(20)
-        #   logging.info("Start streaming")
-        #   client.start_streaming()
-        info, sweep = client.get_next()
+        
         if LOCKRADAR:
             gotDirection = False
-            continue
-
+            logging.info("Pause streaming")
+            client.stop_streaming()
+            sleep(SETTINGS.get("Misc","lock_radar"))
+            logging.info("Continue streaming")
+            client.start_streaming()
+                    
+        info, sweep = client.get_next()        
         plot_data = processor.process(sweep)
 
         speed = (plot_data["speed"])
@@ -171,16 +176,16 @@ def main():
         if speed > SPEEDLIMIT_TEMP:
             SPEEDLIMIT_TEMP = speed
             logging.info("Maximal current Speed: " + str(SPEEDLIMIT_TEMP))
-            if not WAITFORCOMPLETINGSPEEDLIMITDETECTION:
-                WAITFORCOMPLETINGSPEEDLIMITDETECTION = True
-                r = Timer(2.0, lockRadar, (""))
+            if not DETECTION_IN_PROGRESS:
+                DETECTION_IN_PROGRESS = True
+                r = Timer(1.0, lockRadar, (""))
                 r.start()
 
                 threadCaptureImage = Thread(target = captureImage, args=[])
                 threadCaptureImage.start()
 
-                threadSendRadarCatImage = Thread(target = sendRadarCatImage, args=[])
-                threadSendRadarCatImage.start()
+                # threadSendRadarCatImage = Thread(target = sendRadarCatImage, args=[])
+                # threadSendRadarCatImage.start()
 
     print("Disconnecting...")
     client.disconnect()
@@ -337,6 +342,7 @@ def captureImage():
     if os.name != 'nt':
         return
     global CAMERA
+    global IMAGE_FILE_NAME
     global CONTEXT
     global logging
     
@@ -351,26 +357,43 @@ def captureImage():
     camera_file.save(target)
 
     logging.info("Write capture date/time to file")
-    f = open("captureDateTime.txt", "w")
-    f.write(str(current_time))
+    f = open(IMAGE_FILE_NAME + ".ini", "w")
+    f.write("[data]\n")
+    f.write("os_capture_time=" + str(current_time) + "\n")
     f.close()
+    
+    sendRadarCatImage()
 
 def sendRadarCatImage(): 
-    logging.info ("Lock radar until image is sendet")
-    time.sleep(SETTINGS.get("Misc","lock_radar"))
-    global WAITFORCOMPLETINGSPEEDLIMITDETECTION
+    # logging.info ("Lock radar until image is sendet")
+    # time.sleep(SETTINGS.get("Misc","lock_radar"))
+    global DETECTION_IN_PROGRESS
     global SPEEDLIMIT_TEMP
     global SPEEDLIMIT   
     global LOCKRADAR
+    global DIRECTION
+    global IMAGE_FILE_NAME
 
     logging.info("Write max Speed to file: " + str(SPEEDLIMIT_TEMP))
-    f = open("speed.txt", "w")
-    f.write(str(round(SPEEDLIMIT_TEMP, 1)) + " km/h")
-    f.close()
+    f = open(IMAGE_FILE_NAME + ".ini", "a")
+    f.write("max_speed=" + str(round(SPEEDLIMIT_TEMP, 1)) + " km/h\n")
+    # f.close()
+    
+    logging.info("Write movement to file: " + str(DIRECTION))
+    # f = open("direction.txt", "w")
+    if DIRECTION == "away":
+        DIRECTION = "A"
+    elif DIRECTION == "towards":
+        DIRECTION = "T"
+    else:
+        DIRECTION = ""
+    f.write("direction=" + DIRECTION + "\n")
+    # f.close()
+    DIRECTION = ""
     
     logging.info("Write Speedlimit to file: " + str(SPEEDLIMIT))
-    f = open("speedLimit.txt", "w")
-    f.write(str(round(SPEEDLIMIT, 1)) + " km/h")
+    # f = open("speedLimit.txt", "w")
+    f.write("speed_limit=" + str(round(SPEEDLIMIT, 1)) + " km/h\n")
     f.close()
     
     logging.info("Start Postprocessing")
@@ -382,25 +405,14 @@ def sendRadarCatImage():
     subprocess.call([myCmd])
 
     SPEEDLIMIT_TEMP = SPEEDLIMIT
-    WAITFORCOMPLETINGSPEEDLIMITDETECTION = None
+    DETECTION_IN_PROGRESS = None
     LOCKRADAR = False
     logging.info ("Release radar lock")
 
 def lockRadar():
     global LOCKRADAR
-    global DIRECTION
     LOCKRADAR = True
-    logging.info("Write movement to file: " + str(DIRECTION))
-    f = open("direction.txt", "w")
-    if DIRECTION == "away":
-        DIRECTION = "A"
-    elif DIRECTION == "towards":
-        DIRECTION = "T"
-    else:
-        DIRECTION = ""
-    f.write(DIRECTION)
-    f.close()
-    DIRECTION = ""
+
 
 def set_datetime(config, model):
     if model == 'Canon EOS 80D':
@@ -425,6 +437,52 @@ def set_datetime(config, model):
         return True
     return False
 
+def sendEmail():
+    subject = "An email with attachment from Python"
+    body = "This is an email with attachment sent from Python"
+    sender_email = "my@gmail.com"
+    receiver_email = "your@gmail.com"
+    password = input("Type your password and press enter:")
+
+    # Create a multipart message and set headers
+    message = MIMEMultipart()
+    message["From"] = sender_email
+    message["To"] = receiver_email
+    message["Subject"] = subject
+    message["Bcc"] = receiver_email  # Recommended for mass emails
+
+    # Add body to email
+    message.attach(MIMEText(body, "plain"))
+
+    filename = "document.pdf"  # In same directory as script
+
+    # Open PDF file in binary mode
+    with open(filename, "rb") as attachment:
+        # Add file as application/octet-stream
+        # Email client can usually download this automatically as attachment
+        part = MIMEBase("application", "octet-stream")
+        part.set_payload(attachment.read())
+
+    # Encode file in ASCII characters to send by email    
+    encoders.encode_base64(part)
+
+    # Add header as key/value pair to attachment part
+    part.add_header(
+        "Content-Disposition",
+        f"attachment; filename= {filename}",
+    )
+
+    # Add attachment to message and convert message to string
+    message.attach(part)
+    text = message.as_string()
+
+    # Log in to server using secure context and send email
+    context = ssl.create_default_context()
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
+        server.login(sender_email, password)
+        server.sendmail(sender_email, receiver_email, text)
+        
+        
 if __name__ == "__main__":
     if os.name != 'nt':
         import gphoto2 as gp

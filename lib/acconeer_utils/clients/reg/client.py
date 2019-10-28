@@ -32,7 +32,7 @@ class RegClient(BaseClient):
             try:
                 socket.inet_aton(port)
                 # IP
-                print ("Itentify IP address instead of a Com Port")
+                print ("Itentify Windows IP address instead of a Com Port")
                 self._link = links.SocketLink(port)
             except socket.error:
                 # Com Port
@@ -41,7 +41,7 @@ class RegClient(BaseClient):
             try:
                 socket.inet_aton(port)
                 # IP
-                print ("Itentify IP address instead of a Com Port")
+                print ("Itentify Linux IP address instead of a Com Port")
                 self._link = links.SocketLink(port)
             except socket.error:
                 # Com Port
