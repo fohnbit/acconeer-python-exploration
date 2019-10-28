@@ -399,7 +399,7 @@ def captureImage():
    
     for tag in tags.keys():
         if tag not in ('JPEGThumbnail', 'TIFFThumbnail', 'Filename', 'EXIF MakerNote'):
-            print "Key: %s, value %s" % (tag, tags[tag])
+            print ("Key: %s, value %s" % (tag, tags[tag]))
         
     exposure = "--"
     iso = "--"
