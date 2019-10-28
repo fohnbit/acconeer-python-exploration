@@ -351,14 +351,15 @@ def captureImage():
     global SETTINGS
     
     imageCounter = int(SETTINGS["Camera"]["count"])
-    imageCounter++
-    SETTINGS["Camera"]["count"] = imageCounter
+    imageCounter = imageCounter + 1
+    SETTINGS["Camera"]["count"] = str(imageCounter)
     
+    IMAGE_FILE_NAME = 'image' + str(imageCounter)
     current_time = datetime.now()
     logging.info("Capture Image")
     file_path = CAMERA.capture(gp.GP_CAPTURE_IMAGE)
     logging.info('Camera file path: {0}/{1}'.format(file_path.folder, file_path.name))
-    target = os.path.join('.', file_path.name)
+    target = os.path.join('.', IMAGE_FILE_NAME + '.jpg')
     logging.info('Copying image to ' + target)
     camera_file = CAMERA.file_get(
         file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL)
@@ -409,7 +410,7 @@ def sendRadarCatImage():
     
     logging.info("Start Postprocessing")
     myCmd = './postProcessing.sh'
-    subprocess.call([myCmd])
+    subprocess.call([myCmd,IMAGE_FILE_NAME])
     
     logging.info("Send Email with Attachment")
     myCmd = './sendmail.sh'
