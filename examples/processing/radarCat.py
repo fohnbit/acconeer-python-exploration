@@ -404,8 +404,7 @@ def captureImage():
     aperture = str(eval(str(tags["EXIF FNumber"])))
     focal = str(tags["EXIF FocalLength"]) + " mm"   
     
-    myCmd = "convert"
-    myParam = IMAGE_FILE_NAME + ".jpg -strokewidth 0 -fill \"rgba( 0, 0, 0, 1 )\" \
+    myCmd = "convert " + IMAGE_FILE_NAME + ".jpg -strokewidth 0 -fill \"rgba( 0, 0, 0, 1 )\" \
     -draw \"rectangle 0,0 6000,300 \" -font helvetica -fill white -pointsize 100 \
     -draw \"text 30,130 'SPEED'\" -fill white -pointsize 100 \
     -draw \"text 30,230 '" + str(round(SPEEDLIMIT_TEMP, 1)) + " km/h'\" -fill white -pointsize 100 \
@@ -429,8 +428,8 @@ def captureImage():
     -draw \"text 5200,130 'FOCAL'\" -fill white -pointsize 100 \
     -draw \"text 5200,230 '" + focal + "'\" \
     radarCat_" + IMAGE_FILE_NAME + ".jpg"
-    
-    # subprocess.call([myCmd,IMAGE_FILE_NAME])
+    args = shlex.split(myCmd)
+    subprocess.call(args)
        
     logging.info("Send Email with Attachment")
     #myCmd = './sendmail.sh'
