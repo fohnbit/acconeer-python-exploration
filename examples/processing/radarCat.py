@@ -12,6 +12,8 @@ import os
 from datetime import datetime
 import time
 from threading import Timer
+import signal
+import sys
 
 from acconeer_utils.clients import SocketClient, SPIClient, UARTClient
 from acconeer_utils.clients import configs
@@ -48,6 +50,16 @@ SENSOR_CONFIG = None
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 logging.basicConfig(format=log_format, level=logging.INFO)
 
+def signal_handler(sig, frame):
+    global CAMERA
+    global client
+    global logging
+    
+    logging.info("Disconnect")
+    client.disconnect
+    CAMERA.exit()
+    sys.exit(0)
+        
 def get_sensor_config():
     global SETTINGS
     
@@ -73,6 +85,8 @@ def main():
     global client
     global SENSOR_CONFIG
     global SETTINGS
+    
+    signal.signal(signal.SIGINT, signal_handler)
     
     SETTINGS.read("settings.ini")
     
@@ -109,16 +123,12 @@ def main():
     
     SENSOR_CONFIG = get_sensor_config()
     SENSOR_CONFIG.sensor = args.sensors
-    
-    
-    interrupt_handler = example_utils.ExampleInterruptHandler()
-    
-    while not interrupt_handler.got_signal:
+   
+    while True:
         detection()
+        time.sleep(3)
     
-    logging.info("Disconnect")
-    client.disconnect
-    CAMERA.exit()
+ 
 
     
 def detection():
@@ -158,12 +168,8 @@ def detection():
     curDirection = "away"
     gotDirection = False
     detection_in_progress = False
-    
-    interrupt_handler = example_utils.ExampleInterruptHandler()
-    
-    print("Press Ctrl-C to end session")
-    
-    while (not LOCK) and (not interrupt_handler.got_signal):                    
+
+    while not LOCK:                    
         info, sweep = client.get_next()        
         plot_data = processor.process(sweep)
 
@@ -214,7 +220,7 @@ def detection():
     logging.info("stop streaming")
     client.stop_streaming()
     
-    while (not CONTINUE) and (not interrupt_handler.got_signal):
+    while not CONTINUE:
         logging.info("Waiting...")
         time.sleep(3)
         
