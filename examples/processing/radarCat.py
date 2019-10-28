@@ -207,13 +207,15 @@ def detection():
                 
                 r = Timer(1.0, lockRadar, (""))
                 r.start()
-                
+          
+    logging.info("stop streaming")
+    client.stop_streaming()
+    
     while not CONTINUE:
         logging.info("Waiting...")
         time.sleep(3)
         
-    logging.info("stop streaming")
-    client.stop_streaming()
+ 
     
 
 
@@ -493,7 +495,7 @@ def sendEmail(speedlimit, image_file_name):
    
     email = SETTINGS["Email"]
  
-    body = email["body"] + str(speedlimit)
+    body = email["body"] + " "  + str(speedlimit) + " km/h"
     message = MIMEMultipart()
     message["From"] = email["sender_email"]
     message["To"] = email["receiver_email"]
