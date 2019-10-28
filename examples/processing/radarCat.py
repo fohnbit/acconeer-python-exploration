@@ -1,3 +1,4 @@
+import shlex
 import email, smtplib, ssl
 from enum import Enum
 import numpy as np
