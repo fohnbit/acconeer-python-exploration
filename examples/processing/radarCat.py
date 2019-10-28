@@ -398,25 +398,9 @@ def captureImage():
     tags = exifread.process_file(f)
     
     exposure = tags["EXIF ExposureTime"]
-    print (exposure)
     iso = tags["EXIF ISOSpeedRatings"]
-    print (iso)
     aperture = eval(tags["EXIF FNumber"])
-    print (aperture)
-    focal = tags["EXIF FocalLength"] + " mm"   
-    print (focal)
-    # for tag in tags.keys():
-        # if tag not in ('JPEGThumbnail', 'TIFFThumbnail', 'Filename', 'EXIF MakerNote'):
-            # if tag == "EXIF ExposureTime"
-                # exposure = tags[tag]
-            # if tag == "EXIF ISOSpeedRatings"
-                # iso = tags[tag]
-            # if tag == "EXIF FNumber"
-                # n1 = eval(tags[tag])
-                # aperture = eval(tags[tag])        
-            # if tag == "EXIF FocalLength"
-                # focal = tags[tag] + " mm"
-    
+    focal = str(tags["EXIF FocalLength"]) + " mm"   
     
     myCmd = "convert"
     myParam = IMAGE_FILE_NAME + ".jpg -strokewidth 0 -fill \"rgba( 0, 0, 0, 1 )\" \
