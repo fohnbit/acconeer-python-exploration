@@ -209,7 +209,7 @@ def detection():
                 r.start()
                 
     while not CONTINUE:
-        logger.info("Waiting...")
+        logging.info("Waiting...")
         time.sleep(3)
         
     logging.info("stop streaming")
@@ -418,7 +418,7 @@ def captureImage():
     focal = str(tags["EXIF FocalLength"]) + " mm"
     dateTime = str(tags["EXIF DateTimeOriginal"])
     
-    logging.inf("Start post processing")
+    logging.info("Start post processing")
     # start post processing
     myCmd = "convert " + IMAGE_FILE_NAME + ".jpg -strokewidth 0 -fill \"rgba( 0, 0, 0, 1 )\" \
     -draw \"rectangle 0,0 6000,300 \" -font helvetica -fill white -pointsize 100 \
