@@ -69,8 +69,8 @@ def main():
     global SPEEDLIMIT_TEMP
     global DETECTION_IN_PROGRESS
     global DIRECTION
-    global LOCKRADAR
-    
+    global LOCKRADAR    
+
     SETTINGS.read("settings.ini")
     SPEEDLIMIT = float(SETTINGS.get("Speed","Limit"))
     SPEEDLIMIT_TEMP = SPEEDLIMIT
@@ -353,6 +353,7 @@ def captureImage():
     global CONTEXT
     global logging
     global SETTINGS
+    global DIRECTION
     
     imageCounter = int(SETTINGS["Camera"]["count"])
     imageCounter = imageCounter + 1
@@ -376,46 +377,58 @@ def captureImage():
     f = open(IMAGE_FILE_NAME + ".ini", "w")
     f.write("[data]\n")
     f.write("os_capture_time=" + str(current_time) + "\n")
-    f.close()
-    
-    sendRadarCatImage()
 
-def sendRadarCatImage(): 
-    # logging.info ("Lock radar until image is sendet")
-    # time.sleep(SETTINGS.get("Misc","lock_radar"))
-    global DETECTION_IN_PROGRESS
-    global SPEEDLIMIT_TEMP
-    global SPEEDLIMIT   
-    global LOCKRADAR
-    global DIRECTION
-    global IMAGE_FILE_NAME
-
-    logging.info("Write max Speed to file: " + str(SPEEDLIMIT_TEMP))
-    f = open(IMAGE_FILE_NAME + ".ini", "a")
-    f.write("max_speed=" + str(round(SPEEDLIMIT_TEMP, 1)) + " km/h\n")
-    # f.close()
-    
-    logging.info("Write movement to file: " + str(DIRECTION))
-    # f = open("direction.txt", "w")
     if DIRECTION == "away":
-        DIRECTION = "A"
+        dir = "A"
     elif DIRECTION == "towards":
-        DIRECTION = "T"
+        dir = "T"
     else:
-        DIRECTION = ""
-    f.write("direction=" + DIRECTION + "\n")
-    # f.close()
+        dir = ""
     DIRECTION = ""
     
     logging.info("Write Speedlimit to file: " + str(SPEEDLIMIT))
-    # f = open("speedLimit.txt", "w")
     f.write("speed_limit=" + str(round(SPEEDLIMIT, 1)) + " km/h\n")
     f.close()
     
     logging.info("Start Postprocessing")
     myCmd = './postProcessing.sh'
-    subprocess.call([myCmd,IMAGE_FILE_NAME])
     
+    exif = get_file_exif(CAMERA, IMAGE_FILE_NAME + ".jpg")
+    print (exif)
+    exposure = "--"
+    iso = "--"
+    aperture = "--"
+    focal = "--"
+    
+    
+    myCmd = "convert"
+    myParam = IMAGE_FILE_NAME + ".jpg -strokewidth 0 -fill \"rgba( 0, 0, 0, 1 )\" \
+    -draw \"rectangle 0,0 6000,300 \" -font helvetica -fill white -pointsize 100 \
+    -draw \"text 30,130 'SPEED'\" -fill white -pointsize 100 \
+    -draw \"text 30,230 '" + str(round(SPEEDLIMIT_TEMP, 1)) + " km/h'\" -fill white -pointsize 100 \
+    -draw \"text 500,130 'DIR'\" -fill white -pointsize 100 \
+    -draw \"text 500,230 '" + dir + "'\" -fill white -pointsize 100 \
+    -draw \"text 700,130 'DATE'\" -fill white -pointsize 100 \
+    -draw \"text 700,230 '" + str(current_time) + "'\" -fill white -pointsize 100 \
+    -draw \"text 1200,130 ' H:M:S'\" -fill white -pointsize 100 \
+    -draw \"text 1700,130 'CODE'\" -fill white -pointsize 100 \
+    -draw \"text 1700,230 'radarCat'\" -fill white -pointsize 100 \
+    -draw \"text 2300,130 'FOTO'\" -fill white -pointsize 100 \
+    -draw \"text 2300,230 '" + imageCounter + "'\" -fill white -pointsize 100 \
+    -draw \"text 2700,130 'MAX'\" -fill white -pointsize 100 \
+    -draw \"text 2700,230 '" + str(round(SPEEDLIMIT, 1)) + " km/h'\" -fill white -pointsize 100 \
+    -draw \"text 3200,130 'EXPOSURE'\" -fill white -pointsize 100 \
+    -draw \"text 3200,230 '" + exposure + "'\" -fill white -pointsize 100 \
+    -draw \"text 4100,130 'ISO'\" -fill white -pointsize 100 \
+    -draw \"text 4100,230 '" + iso + "'\" -fill white -pointsize 100 \
+    -draw \"text 4500,130 'APERTURE'\" -fill white -pointsize 100 \
+    -draw \"text 4500,230 '" + aperture + "'\" -fill white -pointsize 100 \
+    -draw \"text 5200,130 'FOCAL'\" -fill white -pointsize 100 \
+    -draw \"text 5200,230 '" + focal + "'\" \
+    radarCat_" + IMAGE_FILE_NAME + ".jpg"
+    
+    # subprocess.call([myCmd,IMAGE_FILE_NAME])
+       
     logging.info("Send Email with Attachment")
     #myCmd = './sendmail.sh'
     #subprocess.call([myCmd])
@@ -425,6 +438,7 @@ def sendRadarCatImage():
     DETECTION_IN_PROGRESS = None
     LOCKRADAR = False
     logging.info ("Release radar lock")
+
 
 def lockRadar():
     global LOCKRADAR
@@ -455,8 +469,8 @@ def set_datetime(config, model):
     return False
 
 def sendEmail(speedlimit, image_file_name):
-    global SETTINGS
-    
+    global SETTINGS    
+   
     email = SETTINGS["Email"]
  
     body = email["body"] + str(speedlimit)
@@ -474,19 +488,17 @@ def sendEmail(speedlimit, image_file_name):
   
     message.attach(image)
     text = message.as_string()
-    print (text)
 
-    # Log in to server using secure context and send email
+    # Log in to server using secure context and send email#
     s = smtplib.SMTP(email["server"], int(email["port"]))
-    # s.ehlo()
     s.starttls()
-    # s.ehlo()
     s.login(email["user"], email["password"])
-    s.sendmail(sender_email, receiver_email, text)
+    s.sendmail(email["sender_email"], email["receiver_email"], text)
     s.quit()    
       
         
 if __name__ == "__main__":
     if os.name != 'nt':
-        import gphoto2 as gp
+        import gphoto2 as gp 
+
     main()
