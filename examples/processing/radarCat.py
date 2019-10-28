@@ -32,6 +32,7 @@ SPEEDLIMIT = 15
 SPEEDLIMIT_TEMP = SPEEDLIMIT
 CAMERA = None
 CONTEXT = None
+LOCKRADAR = None
 DIRECTION = ""
 IMAGE_FILE_NAME = ""
 
@@ -134,7 +135,7 @@ def main():
             gotDirection = False
             logging.info("Pause streaming")
             client.stop_streaming()
-            sleep(SETTINGS.get("Misc","lock_radar"))
+            time.sleep(int(SETTINGS.get("Misc","lock_radar")))
             logging.info("Continue streaming")
             client.start_streaming()
                     
@@ -339,7 +340,7 @@ def get_range_depths(sensor_config, session_info):
     return np.linspace(range_start, range_end, num_depths)
     
 def captureImage():
-    if os.name != 'nt':
+    if os.name == 'nt':
         return
     global CAMERA
     global IMAGE_FILE_NAME
@@ -348,11 +349,11 @@ def captureImage():
     
     current_time = datetime.now()
     logging.info("Capture Image")
-    file_path = camera.capture(gp.GP_CAPTURE_IMAGE)
+    file_path = CAMERA.capture(gp.GP_CAPTURE_IMAGE)
     logging.info('Camera file path: {0}/{1}'.format(file_path.folder, file_path.name))
     target = os.path.join('.', file_path.name)
     logging.info('Copying image to', target)
-    camera_file = camera.file_get(
+    camera_file = CAMERA.file_get(
         file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL)
     camera_file.save(target)
 
