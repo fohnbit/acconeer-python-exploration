@@ -207,7 +207,7 @@ def detection():
 
         if speed > SPEEDLIMIT_TEMP:
             SPEEDLIMIT_TEMP = speed
-            logging.info("Maximal current Speed: " + str(SPEEDLIMIT_TEMP))
+            logging.info("Max Speed: " + str(SPEEDLIMIT_TEMP))
             if not detection_in_progress:
                 detection_in_progress = True
                 
@@ -217,7 +217,7 @@ def detection():
                 r = Timer(1.0, lockRadar, (""))
                 r.start()
           
-    logging.info("stop streaming")
+    logging.info("Stop streaming")
     client.stop_streaming()
     
     while not CONTINUE:
@@ -425,7 +425,7 @@ def captureImage():
     
     exposure = str(tags["EXIF ExposureTime"])
     iso = str(tags["EXIF ISOSpeedRatings"])
-    aperture = str(eval(str(tags["EXIF FNumber"])))
+    aperture = "f/" + str(eval(str(tags["EXIF FNumber"])))
     focal = str(tags["EXIF FocalLength"]) + " mm"
     dateTime = str(tags["EXIF DateTimeOriginal"])
     
@@ -437,14 +437,14 @@ def captureImage():
     -draw \"text 30,230 '" + str(round(SPEEDLIMIT_TEMP, 1)) + " km/h'\" -fill white -pointsize 100 \
     -draw \"text 500,130 'DIR'\" -fill white -pointsize 100 \
     -draw \"text 500,230 '" + dir + "'\" -fill white -pointsize 100 \
-    -draw \"text 700,130 'DATE'\" -fill white -pointsize 100 \
-    -draw \"text 700,230 '" + dateTime + "'\" -fill white -pointsize 100 \
-    -draw \"text 1200,130 ' H:M:S'\" -fill white -pointsize 100 \
-    -draw \"text 1700,130 'CODE'\" -fill white -pointsize 100 \
-    -draw \"text 1700,230 'radarCat'\" -fill white -pointsize 100 \
+    -draw \"text 800,130 'DATE'\" -fill white -pointsize 100 \
+    -draw \"text 800,230 '" + dateTime + "'\" -fill white -pointsize 100 \
+    -draw \"text 1300,130 ' H:M:S'\" -fill white -pointsize 100 \
+    -draw \"text 1800,130 'CODE'\" -fill white -pointsize 100 \
+    -draw \"text 1800,230 'radarCat'\" -fill white -pointsize 100 \
     -draw \"text 2300,130 'FOTO'\" -fill white -pointsize 100 \
     -draw \"text 2300,230 '" + str(imageCounter) + "'\" -fill white -pointsize 100 \
-    -draw \"text 2700,130 'MAX'\" -fill white -pointsize 100 \
+    -draw \"text 2700,130 'S.LIMIT'\" -fill white -pointsize 100 \
     -draw \"text 2700,230 '" + str(round(SPEEDLIMIT, 1)) + " km/h'\" -fill white -pointsize 100 \
     -draw \"text 3200,130 'EXPOSURE'\" -fill white -pointsize 100 \
     -draw \"text 3200,230 '" + exposure + "'\" -fill white -pointsize 100 \
