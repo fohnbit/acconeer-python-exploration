@@ -395,16 +395,27 @@ def captureImage():
     # myCmd = './postProcessing.sh'
     
     f = open(IMAGE_FILE_NAME + ".jpg", 'rb')
-    exif = exifread.process_file(f)
-   
-    for tag in tags.keys():
-        if tag not in ('JPEGThumbnail', 'TIFFThumbnail', 'Filename', 'EXIF MakerNote'):
-            print ("Key: %s, value %s" % (tag, tags[tag]))
-        
-    exposure = "--"
-    iso = "--"
-    aperture = "--"
-    focal = "--"
+    tags = exifread.process_file(f)
+    
+    exposure = tags["EXIF ExposureTime"]
+    print (exposure)
+    iso = tags["EXIF ExposureTime"]
+    print (iso)
+    aperture = eval(tags["EXIF ExposureTime"])
+    print (aperture)
+    focal = tags["EXIF FocalLength"] + " mm"   
+    print (focal)
+    # for tag in tags.keys():
+        # if tag not in ('JPEGThumbnail', 'TIFFThumbnail', 'Filename', 'EXIF MakerNote'):
+            # if tag == "EXIF ExposureTime"
+                # exposure = tags[tag]
+            # if tag == "EXIF ISOSpeedRatings"
+                # iso = tags[tag]
+            # if tag == "EXIF FNumber"
+                # n1 = eval(tags[tag])
+                # aperture = eval(tags[tag])        
+            # if tag == "EXIF FocalLength"
+                # focal = tags[tag] + " mm"
     
     
     myCmd = "convert"
