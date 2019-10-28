@@ -47,6 +47,8 @@ log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 logging.basicConfig(format=log_format, level=logging.INFO)
 
 def get_sensor_config():
+    global SETTINGS
+    
     config = configs.SparseServiceConfig()
     
     radar = SETTINGS["Sensor"]
