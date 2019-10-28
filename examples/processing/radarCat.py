@@ -444,7 +444,7 @@ def captureImage():
     -draw \"text 1800,230 'radarCat'\" -fill white -pointsize 100 \
     -draw \"text 2300,130 'FOTO'\" -fill white -pointsize 100 \
     -draw \"text 2300,230 '" + str(imageCounter) + "'\" -fill white -pointsize 100 \
-    -draw \"text 2700,130 'S.LIMIT'\" -fill white -pointsize 100 \
+    -draw \"text 2700,130 'SP.LIMIT'\" -fill white -pointsize 100 \
     -draw \"text 2700,230 '" + str(round(SPEEDLIMIT, 1)) + " km/h'\" -fill white -pointsize 100 \
     -draw \"text 3200,130 'EXPOSURE'\" -fill white -pointsize 100 \
     -draw \"text 3200,230 '" + exposure + "'\" -fill white -pointsize 100 \
