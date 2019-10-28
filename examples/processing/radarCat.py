@@ -29,7 +29,7 @@ SETTINGS = configparser.ConfigParser()
 
 # Speedlimit in km/h
 SPEEDLIMIT = 15
-SPEEDLIMIT_TEMP = SPEEDLIMIT
+SPEEDLIMIT_TEMP
 CAMERA = None
 CONTEXT = None
 LOCKRADAR = None
@@ -63,9 +63,15 @@ def main():
     global logging
     global SETTINGS
     global RESTART_STREAMING
+    global SPEEDLIMIT    
+    global SPEEDLIMIT_TEMP
+    global DETECTION_IN_PROGRESS
+    global DIRECTION
+    global LOCKRADAR
     
     SETTINGS.read("settings.ini")
     SPEEDLIMIT = SETTINGS.get("Speed","Limit")
+    SPEEDLIMIT_TEMP = SPEEDLIMIT
     
     args = example_utils.ExampleArgumentParser(num_sens=1).parse_args()
     example_utils.config_logging(args)
@@ -119,10 +125,6 @@ def main():
 
     processor = Processor(sensor_config, processing_config, session_info)
 
-    global SPEEDLIMIT_TEMP
-    global DETECTION_IN_PROGRESS
-    global DIRECTION
-    global LOCKRADAR
 
     lastSpeed = np.nan
     lastDistance = 0
