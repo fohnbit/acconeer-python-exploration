@@ -453,11 +453,13 @@ def sendEmail():
     global IMAGE_FILE_NAME
     global SPEEDLIMIT
     
-    subject = "Blitzerfoto von radarCat"
-    body = "Blitzerfoto mit " + str(SPEEDLIMIT)
-    sender_email = "h.hoe@gedomo.com"
-    receiver_email = "officd@gedomo.com"
-    password = input("Type your password and press enter:")
+    email = SETTINGS["Email"]
+    
+    subject = email["subject"]
+    body = email["body"] + str(SPEEDLIMIT)
+    sender_email = email["sender_email"]
+    receiver_email = email["receiver_email"]
+    password = email["password"])
 
     # Create a multipart message and set headers
     message = MIMEMultipart()
