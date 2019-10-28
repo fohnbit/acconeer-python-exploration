@@ -70,7 +70,7 @@ def main():
     global LOCKRADAR
     
     SETTINGS.read("settings.ini")
-    SPEEDLIMIT = SETTINGS.get("Speed","Limit")
+    SPEEDLIMIT = float(SETTINGS.get("Speed","Limit"))
     SPEEDLIMIT_TEMP = SPEEDLIMIT
     
     args = example_utils.ExampleArgumentParser(num_sens=1).parse_args()
