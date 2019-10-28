@@ -348,17 +348,25 @@ def captureImage():
     global IMAGE_FILE_NAME
     global CONTEXT
     global logging
+    global SETTINGS
+    
+    imageCounter = int(SETTINGS["Camera"]["count"])
+    imageCounter++
+    SETTINGS["Camera"]["count"] = imageCounter
     
     current_time = datetime.now()
     logging.info("Capture Image")
     file_path = CAMERA.capture(gp.GP_CAPTURE_IMAGE)
     logging.info('Camera file path: {0}/{1}'.format(file_path.folder, file_path.name))
     target = os.path.join('.', file_path.name)
-    logging.info('Copying image to', target)
+    logging.info('Copying image to ' + target)
     camera_file = CAMERA.file_get(
         file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL)
     camera_file.save(target)
-
+    
+    with open('settings.ini', 'w') as configfile:
+        SETTINGS.write(configfile)
+        
     logging.info("Write capture date/time to file")
     f = open(IMAGE_FILE_NAME + ".ini", "w")
     f.write("[data]\n")
