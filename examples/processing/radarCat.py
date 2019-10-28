@@ -27,7 +27,7 @@ import smtplib
 
 HALF_WAVELENGTH = 2.445e-3  # m
 FFT_OVERSAMPLING_FACTOR = 4
-DETECTION_IN_PROGRESS = None
+
 SETTINGS = configparser.ConfigParser()
 
 # Speedlimit in km/h
@@ -38,6 +38,8 @@ CONTEXT = None
 LOCKRADAR = None
 DIRECTION = ""
 IMAGE_FILE_NAME = ""
+client = None
+EXIT = None
 
 # setup logging
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -62,19 +64,8 @@ def get_sensor_config():
     
 def main():
     global CAMERA
-    global CONTEXT
     global logging
-    global SETTINGS
-    global RESTART_STREAMING
-    global SPEEDLIMIT    
-    global SPEEDLIMIT_TEMP
-    global DETECTION_IN_PROGRESS
-    global DIRECTION
-    global LOCKRADAR    
-
-    SETTINGS.read("settings.ini")
-    SPEEDLIMIT = float(SETTINGS.get("Speed","Limit"))
-    SPEEDLIMIT_TEMP = SPEEDLIMIT
+    global client
     
     args = example_utils.ExampleArgumentParser(num_sens=1).parse_args()
     example_utils.config_logging(args)
@@ -106,14 +97,29 @@ def main():
             gp.check_result(gp.gp_camera_set_config(CAMERA, camConfig))
         else:
             logging.error("Could not set date & time")
+
+    detection()
+    
+    client.disconnect
+    CAMERA.exit()
+
+    
+def detection():
+    global CAMERA
+    global logging
+    global SPEEDLIMIT_TEMP
+    global SETTINGS
+    global SPEEDLIMIT    
+    global DIRECTION
+    global client
+    global EXIT
+    
+    EXIT = False
+    
+    SETTINGS.read("settings.ini")
+    SPEEDLIMIT = float(SETTINGS.get("Speed","Limit"))
+    SPEEDLIMIT_TEMP = SPEEDLIMIT
         
-        # subprocess.call(["gphoto2","--set-config", "datetime=now"])
-
-        # gp.check_result(gp.use_python_logging())
-        # CONTEXT = gp.gp_context_new()
-        # CAMERA = gp.check_result(gp.gp_camera_new())
-        # gp.check_result(gp.gp_camera_init(CAMERA, CONTEXT))
-
     sensor_config = get_sensor_config()
     processing_config = get_processing_config()
     sensor_config.sensor = args.sensors
@@ -121,7 +127,7 @@ def main():
     logging.info(sensor_config)
     session_info = client.setup_session(sensor_config)
     logging.info(session_info)
-
+    
     client.start_streaming()
 
     interrupt_handler = example_utils.ExampleInterruptHandler()
@@ -134,18 +140,9 @@ def main():
     lastDistance = 0
     curDirection = "away"
     gotDirection = False
+    detection_in_progress = False
 
-    while not interrupt_handler.got_signal:
-        
-        if LOCKRADAR:
-            gotDirection = False
-            logging.info("Pause streaming")
-            client.stop_streaming()
-            time.sleep(int(SETTINGS.get("Misc","lock_radar")))
-            logging.info("Continue streaming")
-            client.start_streaming()
-            LOCKRADAR = None
-                    
+    while not interrupt_handler.got_signal or not EXIT:                    
         info, sweep = client.get_next()        
         plot_data = processor.process(sweep)
 
@@ -184,20 +181,20 @@ def main():
         if speed > SPEEDLIMIT_TEMP:
             SPEEDLIMIT_TEMP = speed
             logging.info("Maximal current Speed: " + str(SPEEDLIMIT_TEMP))
-            if not DETECTION_IN_PROGRESS:
-                DETECTION_IN_PROGRESS = True
-                r = Timer(1.0, lockRadar, (""))
-                r.start()
-
+            if not detection_in_progress:
+                detection_in_progress = True
+                
                 threadCaptureImage = Thread(target = captureImage, args=[])
                 threadCaptureImage.start()
-
-                # threadSendRadarCatImage = Thread(target = sendRadarCatImage, args=[])
-                # threadSendRadarCatImage.start()
+                
+                r = Timer(1.0, lockRadar, (""))
+                r.start()
+                
 
     print("Disconnecting...")
     client.disconnect()
-    CAMERA.exit()
+    
+
 
 class ProcessingConfiguration(configbase.ProcessingConfig):
     VERSION = 1
@@ -351,17 +348,19 @@ def captureImage():
         return
     global CAMERA
     global IMAGE_FILE_NAME
-    global CONTEXT
     global logging
     global SETTINGS
     global DIRECTION
     global SPEEDLIMIT_TEMP
     global SPEEDLIMIT
+
     
+    # increment Image Counter
     imageCounter = int(SETTINGS["Camera"]["count"])
     imageCounter = imageCounter + 1
     SETTINGS["Camera"]["count"] = str(imageCounter)
     
+    # capture the image
     IMAGE_FILE_NAME = 'image' + str(imageCounter)
     current_time = datetime.now()
     logging.info("Capture Image")
@@ -373,14 +372,11 @@ def captureImage():
         file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL)
     camera_file.save(target)
     
+    # incremendet counter saving
     with open('settings.ini', 'w') as configfile:
         SETTINGS.write(configfile)
-        
-    # logging.info("Write capture date/time to file")
-    # f = open(IMAGE_FILE_NAME + ".ini", "w")
-    # f.write("[data]\n")
-    # f.write("os_capture_time=" + str(current_time) + "\n")
 
+    # check direction of the movement
     if DIRECTION == "away":
         dir = "A"
     elif DIRECTION == "towards":
@@ -388,14 +384,8 @@ def captureImage():
     else:
         dir = ""
     DIRECTION = ""
-    
-    # logging.info("Write Speedlimit to file: " + str(SPEEDLIMIT))
-    # f.write("speed_limit=" + str(round(SPEEDLIMIT, 1)) + " km/h\n")
-    # f.close()
-    
-    # logging.info("Start Postprocessing")
-    # myCmd = './postProcessing.sh'
-    
+
+    # read EXIF data
     f = open(IMAGE_FILE_NAME + ".jpg", 'rb')
     tags = exifread.process_file(f)
     
@@ -404,6 +394,7 @@ def captureImage():
     aperture = str(eval(str(tags["EXIF FNumber"])))
     focal = str(tags["EXIF FocalLength"]) + " mm"   
     
+    # start post processing
     myCmd = "convert " + IMAGE_FILE_NAME + ".jpg -strokewidth 0 -fill \"rgba( 0, 0, 0, 1 )\" \
     -draw \"rectangle 0,0 6000,300 \" -font helvetica -fill white -pointsize 100 \
     -draw \"text 30,130 'SPEED'\" -fill white -pointsize 100 \
@@ -430,21 +421,20 @@ def captureImage():
     radarCat_" + IMAGE_FILE_NAME + ".jpg"
     args = shlex.split(myCmd)
     subprocess.call(args)
-       
+    
+    # sende image by email
     logging.info("Send Email with Attachment")
-    #myCmd = './sendmail.sh'
-    #subprocess.call([myCmd])
     sendEmail(SPEEDLIMIT, IMAGE_FILE_NAME)
 
+    # reset values and restart detection
     SPEEDLIMIT_TEMP = SPEEDLIMIT
-    DETECTION_IN_PROGRESS = None
-    LOCKRADAR = False
-    logging.info ("Release radar lock")
+    logging.info ("Restart detection")
+    detection()
 
 
 def lockRadar():
-    global LOCKRADAR
-    LOCKRADAR = True
+    global EXIT
+    EXIT = True
 
 
 def set_datetime(config, model):
