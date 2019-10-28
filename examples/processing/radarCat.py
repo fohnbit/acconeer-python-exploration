@@ -399,9 +399,9 @@ def captureImage():
     f = open(IMAGE_FILE_NAME + ".jpg", 'rb')
     tags = exifread.process_file(f)
     
-    exposure = tags["EXIF ExposureTime"]
-    iso = tags["EXIF ISOSpeedRatings"]
-    aperture = eval(str(tags["EXIF FNumber"]))
+    exposure = str(tags["EXIF ExposureTime"])
+    iso = str(tags["EXIF ISOSpeedRatings"])
+    aperture = str(eval(str(tags["EXIF FNumber"])))
     focal = str(tags["EXIF FocalLength"]) + " mm"   
     
     myCmd = "convert"
@@ -417,7 +417,7 @@ def captureImage():
     -draw \"text 1700,130 'CODE'\" -fill white -pointsize 100 \
     -draw \"text 1700,230 'radarCat'\" -fill white -pointsize 100 \
     -draw \"text 2300,130 'FOTO'\" -fill white -pointsize 100 \
-    -draw \"text 2300,230 '" + imageCounter + "'\" -fill white -pointsize 100 \
+    -draw \"text 2300,230 '" + str(imageCounter) + "'\" -fill white -pointsize 100 \
     -draw \"text 2700,130 'MAX'\" -fill white -pointsize 100 \
     -draw \"text 2700,230 '" + str(round(SPEEDLIMIT, 1)) + " km/h'\" -fill white -pointsize 100 \
     -draw \"text 3200,130 'EXPOSURE'\" -fill white -pointsize 100 \
