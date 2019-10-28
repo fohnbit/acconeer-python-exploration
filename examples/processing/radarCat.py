@@ -111,6 +111,7 @@ def main():
     
     detection()
     
+    logging.info("Disconnect")
     client.disconnect
     CAMERA.exit()
 
@@ -203,8 +204,8 @@ def detection():
                 r.start()
                 
 
-    print("Disconnecting...")
-    client.disconnect()
+    logging.info("stop streaming")
+    client.stop_streaming()
     
 
 
@@ -397,6 +398,7 @@ def captureImage():
         dir = ""
     DIRECTION = ""
 
+    logging.inf("Read EXIF data")
     # read EXIF data
     f = open(IMAGE_FILE_NAME + ".jpg", 'rb')
     tags = exifread.process_file(f)
@@ -407,6 +409,7 @@ def captureImage():
     focal = str(tags["EXIF FocalLength"]) + " mm"
     dateTime = str(tags["EXIF DateTimeOriginal"])
     
+    logging.inf("Start post processing")
     # start post processing
     myCmd = "convert " + IMAGE_FILE_NAME + ".jpg -strokewidth 0 -fill \"rgba( 0, 0, 0, 1 )\" \
     -draw \"rectangle 0,0 6000,300 \" -font helvetica -fill white -pointsize 100 \
@@ -442,11 +445,14 @@ def captureImage():
     # reset values and restart detection
     SPEEDLIMIT_TEMP = SPEEDLIMIT
     logging.info ("Restart detection")
+    
     detection()
 
 
 def lockRadar():
     global EXIT
+    global logging
+    logging.info("Send EXIT command")
     EXIT = True
 
 
