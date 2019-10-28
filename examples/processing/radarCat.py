@@ -18,6 +18,7 @@ from acconeer_utils.structs import configbase
 
 from email import encoders
 from email.mime.base import MIMEBase
+from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -140,6 +141,7 @@ def main():
             time.sleep(int(SETTINGS.get("Misc","lock_radar")))
             logging.info("Continue streaming")
             client.start_streaming()
+            LOCKRADAR = None
                     
         info, sweep = client.get_next()        
         plot_data = processor.process(sweep)
