@@ -70,6 +70,9 @@ def main():
     global logging
     global client
     global SENSOR_CONFIG
+    global SETTINGS
+    
+    SETTINGS.read("settings.ini")
     
     args = example_utils.ExampleArgumentParser(num_sens=1).parse_args()
     example_utils.config_logging(args)
@@ -125,7 +128,7 @@ def detection():
     
     EXIT = False
     
-    SETTINGS.read("settings.ini")
+    
     SPEEDLIMIT = float(SETTINGS.get("Speed","Limit"))
     SPEEDLIMIT_TEMP = SPEEDLIMIT
         
