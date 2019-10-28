@@ -117,6 +117,7 @@ def main():
     processing_config = get_processing_config()
     sensor_config.sensor = args.sensors
 
+    logging.info(sensor_config)
     session_info = client.setup_session(sensor_config)
     logging.info(session_info)
 
