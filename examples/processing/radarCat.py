@@ -21,6 +21,7 @@ from email.mime.base import MIMEBase
 from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+import smtplib
 
 
 HALF_WAVELENGTH = 2.445e-3  # m
@@ -484,10 +485,19 @@ def sendEmail(speedlimit, image_file_name):
     text = message.as_string()
 
     # Log in to server using secure context and send email
-    context = ssl.create_default_context()
-    with smtplib.SMTP_SSL(email["server"], int(email["port"]), context=context) as server:
-        server.login(sender_email, password)
-        server.sendmail(sender_email, receiver_email, text)
+    s = smtplib.SMTP(email["server"], int(email["port"]))
+    s.ehlo()
+    s.starttls()
+    s.ehlo()
+    s.login(sender_email, password)
+    s.sendmail(sender_email, receiver_email, text)
+    s.quit()
+    
+    
+    # context = ssl.create_default_context()
+    # with smtplib.SMTP_SSL(email["server"], int(email["port"]), context=context) as server:
+        # server.login(sender_email, password)
+        # server.sendmail(sender_email, receiver_email, text)
         
         
 if __name__ == "__main__":
