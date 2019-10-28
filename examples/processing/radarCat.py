@@ -28,8 +28,8 @@ DETECTION_IN_PROGRESS = None
 SETTINGS = configparser.ConfigParser()
 
 # Speedlimit in km/h
-SPEEDLIMIT = 15
-SPEEDLIMIT_TEMP
+SPEEDLIMIT = None
+SPEEDLIMIT_TEMP = None
 CAMERA = None
 CONTEXT = None
 LOCKRADAR = None
