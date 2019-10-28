@@ -458,48 +458,33 @@ def sendEmail(speedlimit, image_file_name):
     global SETTINGS
     
     email = SETTINGS["Email"]
-    
-    subject = email["subject"]
+ 
     body = email["body"] + str(speedlimit)
-    sender_email = email["sender_email"]
-    receiver_email = email["receiver_email"]
-    password = email["password"]
-
-    # Create a multipart message and set headers
     message = MIMEMultipart()
-    message["From"] = sender_email
-    message["To"] = receiver_email
-    message["Subject"] = subject
-    message["Bcc"] = receiver_email  # Recommended for mass emails
+    message["From"] = email["sender_email"]
+    message["To"] = email["receiver_email"]
+    message["Subject"] = email["subject"]
 
-    # Add body to email
     message.attach(MIMEText(body, "plain"))
 
     filename = "radarCat_" + image_file_name + ".jpg"
     img_data = open(filename, 'rb').read()
 
     image = MIMEImage(img_data, name=os.path.basename(filename))
-    
-
-    # Add attachment to message and convert message to string
+  
     message.attach(image)
     text = message.as_string()
+    print (text)
 
     # Log in to server using secure context and send email
     s = smtplib.SMTP(email["server"], int(email["port"]))
     s.ehlo()
     s.starttls()
     s.ehlo()
-    s.login(sender_email, password)
+    s.login(email["user"], email["password"])
     s.sendmail(sender_email, receiver_email, text)
-    s.quit()
-    
-    
-    # context = ssl.create_default_context()
-    # with smtplib.SMTP_SSL(email["server"], int(email["port"]), context=context) as server:
-        # server.login(sender_email, password)
-        # server.sendmail(sender_email, receiver_email, text)
-        
+    s.quit()    
+      
         
 if __name__ == "__main__":
     if os.name != 'nt':
