@@ -163,7 +163,7 @@ def detection():
     
     print("Press Ctrl-C to end session")
     
-    while (not LOCK) or (not interrupt_handler.got_signal):                    
+    while (not LOCK) and (not interrupt_handler.got_signal):                    
         info, sweep = client.get_next()        
         plot_data = processor.process(sweep)
 
@@ -214,7 +214,7 @@ def detection():
     logging.info("stop streaming")
     client.stop_streaming()
     
-    while (not CONTINUE) or (not interrupt_handler.got_signal):
+    while (not CONTINUE) and (not interrupt_handler.got_signal):
         logging.info("Waiting...")
         time.sleep(3)
         
