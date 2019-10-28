@@ -32,3 +32,4 @@ docs/_build
 *.log
 *.pdf
 *.gz
+examples/processing/settings.ini
