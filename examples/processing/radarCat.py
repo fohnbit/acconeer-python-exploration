@@ -40,6 +40,7 @@ DIRECTION = ""
 IMAGE_FILE_NAME = ""
 client = None
 EXIT = None
+SENSOR_CONFIG = None
 
 # setup logging
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -66,6 +67,7 @@ def main():
     global CAMERA
     global logging
     global client
+    global SENSOR_CONFIG
     
     args = example_utils.ExampleArgumentParser(num_sens=1).parse_args()
     example_utils.config_logging(args)
@@ -97,7 +99,11 @@ def main():
             gp.check_result(gp.gp_camera_set_config(CAMERA, camConfig))
         else:
             logging.error("Could not set date & time")
-
+    
+    SENSOR_CONFIG = get_sensor_config()
+    processing_config = get_processing_config()
+    SENSOR_CONFIG.sensor = args.sensors
+    
     detection()
     
     client.disconnect
@@ -113,6 +119,7 @@ def detection():
     global DIRECTION
     global client
     global EXIT
+    global SENSOR_CONFIG
     
     EXIT = False
     
@@ -120,12 +127,10 @@ def detection():
     SPEEDLIMIT = float(SETTINGS.get("Speed","Limit"))
     SPEEDLIMIT_TEMP = SPEEDLIMIT
         
-    sensor_config = get_sensor_config()
-    processing_config = get_processing_config()
-    sensor_config.sensor = args.sensors
 
-    logging.info(sensor_config)
-    session_info = client.setup_session(sensor_config)
+
+    logging.info(SENSOR_CONFIG)
+    session_info = client.setup_session(SENSOR_CONFIG)
     logging.info(session_info)
     
     client.start_streaming()
@@ -133,7 +138,7 @@ def detection():
     interrupt_handler = example_utils.ExampleInterruptHandler()
     print("Press Ctrl-C to end session")
 
-    processor = Processor(sensor_config, processing_config, session_info)
+    processor = Processor(SENSOR_CONFIG, processing_config, session_info)
 
 
     lastSpeed = np.nan
@@ -362,7 +367,7 @@ def captureImage():
     
     # capture the image
     IMAGE_FILE_NAME = 'image' + str(imageCounter)
-    current_time = datetime.now()
+    # current_time = datetime.now()
     logging.info("Capture Image")
     file_path = CAMERA.capture(gp.GP_CAPTURE_IMAGE)
     logging.info('Camera file path: {0}/{1}'.format(file_path.folder, file_path.name))
@@ -392,7 +397,8 @@ def captureImage():
     exposure = str(tags["EXIF ExposureTime"])
     iso = str(tags["EXIF ISOSpeedRatings"])
     aperture = str(eval(str(tags["EXIF FNumber"])))
-    focal = str(tags["EXIF FocalLength"]) + " mm"   
+    focal = str(tags["EXIF FocalLength"]) + " mm"
+    dateTime = str(tags["EXIF DateTimeOriginal"])
     
     # start post processing
     myCmd = "convert " + IMAGE_FILE_NAME + ".jpg -strokewidth 0 -fill \"rgba( 0, 0, 0, 1 )\" \
@@ -402,7 +408,7 @@ def captureImage():
     -draw \"text 500,130 'DIR'\" -fill white -pointsize 100 \
     -draw \"text 500,230 '" + dir + "'\" -fill white -pointsize 100 \
     -draw \"text 700,130 'DATE'\" -fill white -pointsize 100 \
-    -draw \"text 700,230 '" + str(current_time) + "'\" -fill white -pointsize 100 \
+    -draw \"text 700,230 '" + dateTime + "'\" -fill white -pointsize 100 \
     -draw \"text 1200,130 ' H:M:S'\" -fill white -pointsize 100 \
     -draw \"text 1700,130 'CODE'\" -fill white -pointsize 100 \
     -draw \"text 1700,230 'radarCat'\" -fill white -pointsize 100 \
