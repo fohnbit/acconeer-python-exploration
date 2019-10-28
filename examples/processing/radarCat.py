@@ -106,7 +106,6 @@ def main():
             logging.error("Could not set date & time")
     
     SENSOR_CONFIG = get_sensor_config()
-    processing_config = get_processing_config()
     SENSOR_CONFIG.sensor = args.sensors
     
     detection()
@@ -143,6 +142,8 @@ def detection():
     interrupt_handler = example_utils.ExampleInterruptHandler()
     print("Press Ctrl-C to end session")
 
+    processing_config = get_processing_config()
+    
     processor = Processor(SENSOR_CONFIG, processing_config, session_info)
 
 
