@@ -413,8 +413,9 @@ def sendRadarCatImage():
     subprocess.call([myCmd,IMAGE_FILE_NAME])
     
     logging.info("Send Email with Attachment")
-    myCmd = './sendmail.sh'
-    subprocess.call([myCmd])
+    #myCmd = './sendmail.sh'
+    #subprocess.call([myCmd])
+    sendEmail(SPEEDLIMIT, IMAGE_FILE_NAME)
 
     SPEEDLIMIT_TEMP = SPEEDLIMIT
     DETECTION_IN_PROGRESS = None
@@ -449,17 +450,16 @@ def set_datetime(config, model):
         return True
     return False
 
-def sendEmail():
-    global IMAGE_FILE_NAME
-    global SPEEDLIMIT
+def sendEmail(speedlimit, image_file_name):
+    global SETTINGS
     
     email = SETTINGS["Email"]
     
     subject = email["subject"]
-    body = email["body"] + str(SPEEDLIMIT)
+    body = email["body"] + str(speedlimit)
     sender_email = email["sender_email"]
     receiver_email = email["receiver_email"]
-    password = email["password"])
+    password = email["password"]
 
     # Create a multipart message and set headers
     message = MIMEMultipart()
@@ -471,31 +471,19 @@ def sendEmail():
     # Add body to email
     message.attach(MIMEText(body, "plain"))
 
-    filename = "document.pdf"  # In same directory as script
+    filename = "radarCat_" + image_file_name + ".jpg"
+    img_data = open(filename, 'rb').read()
 
-    # Open PDF file in binary mode
-    with open(filename, "rb") as attachment:
-        # Add file as application/octet-stream
-        # Email client can usually download this automatically as attachment
-        part = MIMEBase("application", "octet-stream")
-        part.set_payload(attachment.read())
-
-    # Encode file in ASCII characters to send by email    
-    encoders.encode_base64(part)
-
-    # Add header as key/value pair to attachment part
-    part.add_header(
-        "Content-Disposition",
-        f"attachment; filename= {filename}",
-    )
+    image = MIMEImage(img_data, name=os.path.basename(filename))
+    
 
     # Add attachment to message and convert message to string
-    message.attach(part)
+    message.attach(image)
     text = message.as_string()
 
     # Log in to server using secure context and send email
     context = ssl.create_default_context()
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
+    with smtplib.SMTP_SSL(email["server"], int(email["port"]), context=context) as server:
         server.login(sender_email, password)
         server.sendmail(sender_email, receiver_email, text)
         
