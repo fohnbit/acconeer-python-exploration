@@ -6,6 +6,7 @@ from threading import Thread
 import subprocess
 import configparser
 import logging
+import exifread
 import os
 from datetime import datetime
 import time
