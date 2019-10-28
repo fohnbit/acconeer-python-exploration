@@ -41,6 +41,7 @@ DIRECTION = ""
 IMAGE_FILE_NAME = ""
 client = None
 EXIT = None
+LOCK = None
 SENSOR_CONFIG = None
 
 # setup logging
@@ -109,7 +110,12 @@ def main():
     SENSOR_CONFIG = get_sensor_config()
     SENSOR_CONFIG.sensor = args.sensors
     
-    detection()
+    
+    interrupt_handler = example_utils.ExampleInterruptHandler()
+    print("Press Ctrl-C to end session")
+    
+    while not interrupt_handler.got_signal:
+        detection()
     
     logging.info("Disconnect")
     client.disconnect
@@ -124,11 +130,13 @@ def detection():
     global SPEEDLIMIT    
     global DIRECTION
     global client
+    global LOCK
     global EXIT
     global SENSOR_CONFIG
+    global CONTINUE
     
-    EXIT = False
-    
+    LOCK = False
+    CONTINUE = False
     
     SPEEDLIMIT = float(SETTINGS.get("Speed","Limit"))
     SPEEDLIMIT_TEMP = SPEEDLIMIT
@@ -141,9 +149,6 @@ def detection():
     
     client.start_streaming()
 
-    interrupt_handler = example_utils.ExampleInterruptHandler()
-    print("Press Ctrl-C to end session")
-
     processing_config = get_processing_config()
     
     processor = Processor(SENSOR_CONFIG, processing_config, session_info)
@@ -155,7 +160,7 @@ def detection():
     gotDirection = False
     detection_in_progress = False
 
-    while not interrupt_handler.got_signal or not EXIT:                    
+    while not LOCK:                    
         info, sweep = client.get_next()        
         plot_data = processor.process(sweep)
 
@@ -203,7 +208,10 @@ def detection():
                 r = Timer(1.0, lockRadar, (""))
                 r.start()
                 
-
+    while not CONTINUE:
+        logger.info("Waiting...")
+        time.sleep(3)
+        
     logging.info("stop streaming")
     client.stop_streaming()
     
@@ -366,6 +374,7 @@ def captureImage():
     global DIRECTION
     global SPEEDLIMIT_TEMP
     global SPEEDLIMIT
+    global CONTINUE
 
     
     # increment Image Counter
@@ -398,7 +407,7 @@ def captureImage():
         dir = ""
     DIRECTION = ""
 
-    logging.inf("Read EXIF data")
+    logging.info("Read EXIF data")
     # read EXIF data
     f = open(IMAGE_FILE_NAME + ".jpg", 'rb')
     tags = exifread.process_file(f)
@@ -446,14 +455,14 @@ def captureImage():
     SPEEDLIMIT_TEMP = SPEEDLIMIT
     logging.info ("Restart detection")
     
-    detection()
+    CONTINUE = True
 
 
 def lockRadar():
-    global EXIT
+    global LOCK
     global logging
-    logging.info("Send EXIT command")
-    EXIT = True
+    logging.info("Send LOCK command")
+    LOCK = True
 
 
 def set_datetime(config, model):
