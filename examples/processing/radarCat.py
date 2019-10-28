@@ -478,9 +478,9 @@ def sendEmail(speedlimit, image_file_name):
 
     # Log in to server using secure context and send email
     s = smtplib.SMTP(email["server"], int(email["port"]))
-    s.ehlo()
+    # s.ehlo()
     s.starttls()
-    s.ehlo()
+    # s.ehlo()
     s.login(email["user"], email["password"])
     s.sendmail(sender_email, receiver_email, text)
     s.quit()    
