@@ -394,7 +394,7 @@ def captureImage():
     # logging.info("Start Postprocessing")
     # myCmd = './postProcessing.sh'
     
-    exif = get_file_exif(CAMERA, IMAGE_FILE_NAME + ".jpg")
+    exif = exifread.process_file(IMAGE_FILE_NAME + ".jpg")
     print (exif)
     exposure = "--"
     iso = "--"
