@@ -484,7 +484,7 @@ def captureImage():
     
     # copy files and delete after copy
     server = SETTINGS["Server"]
-    send_server(server["server"], user["user"], password["password"], path["path"], "radarCat_" + IMAGE_FILE_NAME + ".jpg")
+    send_server(server["server"], server["user"], server["password"], server["path"], "radarCat_" + IMAGE_FILE_NAME + ".jpg")
     os.remove("*.jpg")
         
     # except:
