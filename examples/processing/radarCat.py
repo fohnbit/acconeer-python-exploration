@@ -485,7 +485,8 @@ def captureImage():
     # copy files and delete after copy
     server = SETTINGS["Server"]
     send_server(server["server"], server["user"], server["password"], server["path"], "radarCat_" + IMAGE_FILE_NAME + ".jpg")
-    os.remove("*.jpg")
+    os.remove("radarCat_" + IMAGE_FILE_NAME + ".jpg")
+    os.remove(IMAGE_FILE_NAME + ".jpg")
         
     # except:
     #     print ("Unexpected error:", sys.exc_info()[0])
@@ -531,7 +532,7 @@ def set_datetime(config, model):
 def send_server(server, user, password, path, file):
     try:
         logging.info("Copy to local media server")
-        subprocess.check_call(["sshpass", "-p", password, "scp", file, user + "@" + server + ":" + path])
+        subprocess.call(["sshpass", "-p", password, "scp", file, user + "@" + server + ":" + path])
     except:
         print ("Unexpected error:", sys.exc_info()[0])
 
