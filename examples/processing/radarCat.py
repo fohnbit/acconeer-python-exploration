@@ -400,95 +400,95 @@ def captureImage():
     global SPEEDLIMIT_TEMP
     global SPEEDLIMIT
     global CONTINUE
-    try:
-        if os.name == 'nt':
-            return
-        
-        # increment Image Counter
-        imageCounter = int(SETTINGS["Camera"]["count"])
-        imageCounter = imageCounter + 1
-        SETTINGS["Camera"]["count"] = str(imageCounter)
-        
-        # capture the image
-        IMAGE_FILE_NAME = 'image' + str(imageCounter)
-        # current_time = datetime.now()
-        logging.info("Capture Image")
-        file_path = CAMERA.capture(gp.GP_CAPTURE_IMAGE)
-        logging.info('Camera file path: {0}/{1}'.format(file_path.folder, file_path.name))
-        target = os.path.join('.', IMAGE_FILE_NAME + '.jpg')
-        logging.info('Copying image to ' + target)
-        camera_file = CAMERA.file_get(
-            file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL)
-        camera_file.save(target)
-        
-        # incremendet counter saving
-        with open('settings.ini', 'w') as configfile:
-            SETTINGS.write(configfile)
+    # try:
+    if os.name == 'nt':
+        return
+    
+    # increment Image Counter
+    imageCounter = int(SETTINGS["Camera"]["count"])
+    imageCounter = imageCounter + 1
+    SETTINGS["Camera"]["count"] = str(imageCounter)
+    
+    # capture the image
+    IMAGE_FILE_NAME = 'image' + str(imageCounter)
+    # current_time = datetime.now()
+    logging.info("Capture Image")
+    file_path = CAMERA.capture(gp.GP_CAPTURE_IMAGE)
+    logging.info('Camera file path: {0}/{1}'.format(file_path.folder, file_path.name))
+    target = os.path.join('.', IMAGE_FILE_NAME + '.jpg')
+    logging.info('Copying image to ' + target)
+    camera_file = CAMERA.file_get(
+        file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL)
+    camera_file.save(target)
+    
+    # incremendet counter saving
+    with open('settings.ini', 'w') as configfile:
+        SETTINGS.write(configfile)
 
-        # check direction of the movement
-        if DIRECTION == "away":
-            dir = "A"
-        elif DIRECTION == "towards":
-            dir = "T"
-        else:
-            dir = ""
-        DIRECTION = ""
+    # check direction of the movement
+    if DIRECTION == "away":
+        dir = "A"
+    elif DIRECTION == "towards":
+        dir = "T"
+    else:
+        dir = ""
+    DIRECTION = ""
 
-        logging.info("Read EXIF data")
-        # read EXIF data
-        f = open(IMAGE_FILE_NAME + ".jpg", 'rb')
-        tags = exifread.process_file(f)
-        
-        exposure = str(tags["EXIF ExposureTime"])
-        iso = str(tags["EXIF ISOSpeedRatings"])
-        aperture = "f/" + str(eval(str(tags["EXIF FNumber"])))
-        focal = str(tags["EXIF FocalLength"]) + " mm"
-        dateTime = str(tags["EXIF DateTimeOriginal"])
-        
-        logging.info("Start post processing")
-        # start post processing
-        myCmd = "convert " + IMAGE_FILE_NAME + ".jpg -strokewidth 0 -fill \"rgba( 0, 0, 0, 1 )\" \
-        -draw \"rectangle 0,0 6000,300 \" -font helvetica -fill white -pointsize 100 \
-        -draw \"text 30,130 'SPEED'\" -fill white -pointsize 100 \
-        -draw \"text 30,230 '" + str(round(SPEEDLIMIT_TEMP, 1)) + " km/h'\" -fill white -pointsize 100 \
-        -draw \"text 500,130 'DIR'\" -fill white -pointsize 100 \
-        -draw \"text 500,230 '" + dir + "'\" -fill white -pointsize 100 \
-        -draw \"text 800,130 'DATE'\" -fill white -pointsize 100 \
-        -draw \"text 800,230 '" + dateTime + "'\" -fill white -pointsize 100 \
-        -draw \"text 1300,130 ' H:M:S'\" -fill white -pointsize 100 \
-        -draw \"text 1800,130 'CODE'\" -fill white -pointsize 100 \
-        -draw \"text 1800,230 'radarCat'\" -fill white -pointsize 100 \
-        -draw \"text 2300,130 'FOTO'\" -fill white -pointsize 100 \
-        -draw \"text 2300,230 '" + str(imageCounter) + "'\" -fill white -pointsize 100 \
-        -draw \"text 2700,130 'SP.LIMIT'\" -fill white -pointsize 100 \
-        -draw \"text 2700,230 '" + str(round(SPEEDLIMIT, 1)) + " km/h'\" -fill white -pointsize 100 \
-        -draw \"text 3200,130 'EXPOSURE'\" -fill white -pointsize 100 \
-        -draw \"text 3200,230 '" + exposure + "'\" -fill white -pointsize 100 \
-        -draw \"text 4100,130 'ISO'\" -fill white -pointsize 100 \
-        -draw \"text 4100,230 '" + iso + "'\" -fill white -pointsize 100 \
-        -draw \"text 4500,130 'APERTURE'\" -fill white -pointsize 100 \
-        -draw \"text 4500,230 '" + aperture + "'\" -fill white -pointsize 100 \
-        -draw \"text 5200,130 'FOCAL'\" -fill white -pointsize 100 \
-        -draw \"text 5200,230 '" + focal + "'\" \
-        radarCat_" + IMAGE_FILE_NAME + ".jpg"
-        args = shlex.split(myCmd)
-        subprocess.call(args)
-      
-        # sende image by email
-        logging.info("Send Email with Attachment")
-        sendEmail(SPEEDLIMIT, IMAGE_FILE_NAME)
+    logging.info("Read EXIF data")
+    # read EXIF data
+    f = open(IMAGE_FILE_NAME + ".jpg", 'rb')
+    tags = exifread.process_file(f)
+    
+    exposure = str(tags["EXIF ExposureTime"])
+    iso = str(tags["EXIF ISOSpeedRatings"])
+    aperture = "f/" + str(eval(str(tags["EXIF FNumber"])))
+    focal = str(tags["EXIF FocalLength"]) + " mm"
+    dateTime = str(tags["EXIF DateTimeOriginal"])
+    
+    logging.info("Start post processing")
+    # start post processing
+    myCmd = "convert " + IMAGE_FILE_NAME + ".jpg -strokewidth 0 -fill \"rgba( 0, 0, 0, 1 )\" \
+    -draw \"rectangle 0,0 6000,300 \" -font helvetica -fill white -pointsize 100 \
+    -draw \"text 30,130 'SPEED'\" -fill white -pointsize 100 \
+    -draw \"text 30,230 '" + str(round(SPEEDLIMIT_TEMP, 1)) + " km/h'\" -fill white -pointsize 100 \
+    -draw \"text 500,130 'DIR'\" -fill white -pointsize 100 \
+    -draw \"text 500,230 '" + dir + "'\" -fill white -pointsize 100 \
+    -draw \"text 800,130 'DATE'\" -fill white -pointsize 100 \
+    -draw \"text 800,230 '" + dateTime + "'\" -fill white -pointsize 100 \
+    -draw \"text 1300,130 ' H:M:S'\" -fill white -pointsize 100 \
+    -draw \"text 1800,130 'CODE'\" -fill white -pointsize 100 \
+    -draw \"text 1800,230 'radarCat'\" -fill white -pointsize 100 \
+    -draw \"text 2300,130 'FOTO'\" -fill white -pointsize 100 \
+    -draw \"text 2300,230 '" + str(imageCounter) + "'\" -fill white -pointsize 100 \
+    -draw \"text 2700,130 'SP.LIMIT'\" -fill white -pointsize 100 \
+    -draw \"text 2700,230 '" + str(round(SPEEDLIMIT, 1)) + " km/h'\" -fill white -pointsize 100 \
+    -draw \"text 3200,130 'EXPOSURE'\" -fill white -pointsize 100 \
+    -draw \"text 3200,230 '" + exposure + "'\" -fill white -pointsize 100 \
+    -draw \"text 4100,130 'ISO'\" -fill white -pointsize 100 \
+    -draw \"text 4100,230 '" + iso + "'\" -fill white -pointsize 100 \
+    -draw \"text 4500,130 'APERTURE'\" -fill white -pointsize 100 \
+    -draw \"text 4500,230 '" + aperture + "'\" -fill white -pointsize 100 \
+    -draw \"text 5200,130 'FOCAL'\" -fill white -pointsize 100 \
+    -draw \"text 5200,230 '" + focal + "'\" \
+    radarCat_" + IMAGE_FILE_NAME + ".jpg"
+    args = shlex.split(myCmd)
+    subprocess.call(args)
+  
+    # sende image by email
+    logging.info("Send Email with Attachment")
+    sendEmail(SPEEDLIMIT, IMAGE_FILE_NAME)
 
-        # reset values and restart detection
-        SPEEDLIMIT_TEMP = SPEEDLIMIT
-        logging.info ("Restart detection")
+    # reset values and restart detection
+    SPEEDLIMIT_TEMP = SPEEDLIMIT
+    logging.info ("Restart detection")
+    
+    # copy files and delete after copy
+    server = SETTINGS["Server"]
+    send_server(server["server"], user["user"], password["password"], path["path"], "radarCat_" + IMAGE_FILE_NAME + ".jpg")
+    os.remove("*.jpg")
         
-        # copy files and delete after copy
-        server = SETTINGS["Server"]
-        send_server(server["server"], user["user"], password["password"], path["path"], "radarCat_" + IMAGE_FILE_NAME + ".jpg")
-        os.remove("*.jpg")
-        
-    except:
-        print ("Unexpected error:", sys.exc_info()[0])
+    # except:
+    #     print ("Unexpected error:", sys.exc_info()[0])
     
     CONTINUE = True
 
