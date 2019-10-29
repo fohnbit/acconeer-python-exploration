@@ -59,6 +59,9 @@ def signal_handler(sig, frame):
         logging.info("Disconnect")
         client.disconnect
         CAMERA.exit()
+    except:
+        print "Unexpected error:", sys.exc_info()[0]
+        
     sys.exit(0)
         
 def get_sensor_config():
