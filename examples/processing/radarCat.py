@@ -531,7 +531,7 @@ def set_datetime(config, model):
 def send_server(server, user, password, path, file):
     try:
         logging.info("Copy to local media server")
-        subprocess.check_call(["sshpass", "-p", password, "scp", file", user + "@" + server + ":" + path])
+        subprocess.check_call(["sshpass", "-p", password, "scp", file, user + "@" + server + ":" + path])
     except:
         print ("Unexpected error:", sys.exc_info()[0])
 
