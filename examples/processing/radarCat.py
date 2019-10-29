@@ -60,7 +60,7 @@ def signal_handler(sig, frame):
         client.disconnect
         CAMERA.exit()
     except:
-        print "Unexpected error:", sys.exc_info()[0]
+        print ("Unexpected error:", sys.exc_info()[0])
         
     sys.exit(0)
         
@@ -83,7 +83,7 @@ def get_sensor_config():
         config.experimental_stitching = False
         
     except:
-        print "Unexpected error:", sys.exc_info()[0]
+        print ("Unexpected error:", sys.exc_info()[0])
         
     return config    
     
@@ -132,7 +132,7 @@ def main():
         SENSOR_CONFIG = get_sensor_config()
         SENSOR_CONFIG.sensor = args.sensors
     except:
-        print "Unexpected error:", sys.exc_info()[0]
+        print ("Unexpected error:", sys.exc_info()[0])
         
     while True:
         detection()
@@ -228,13 +228,13 @@ def detection():
                     r = Timer(1.0, lockRadar, (""))
                     r.start()
     except:
-        print "Unexpected error:", sys.exc_info()[0]
+        print ("Unexpected error:", sys.exc_info()[0])
     
     try:
         logging.info("Stop streaming")
         client.stop_streaming()
     except:
-        print "Unexpected error:", sys.exc_info()[0]
+        print ("Unexpected error:", sys.exc_info()[0])
         
     while not CONTINUE:
         logging.info("Waiting...")
@@ -488,7 +488,7 @@ def captureImage():
         os.remove("*.jpg")
         
     except:
-        print "Unexpected error:", sys.exc_info()[0]
+        print ("Unexpected error:", sys.exc_info()[0])
     
     CONTINUE = True
 
@@ -524,7 +524,7 @@ def set_datetime(config, model):
             return True
     
     except:
-        print "Unexpected error:", sys.exc_info()[0]
+        print ("Unexpected error:", sys.exc_info()[0])
     
     return False
 
@@ -533,7 +533,7 @@ def send_server(server, user, password, path, file):
         logging.info("Copy to local media server")
         subprocess.check_call(["sshpass", "-p", password, "scp", file", user + "@" + server + ":" + path])
     except:
-        print "Unexpected error:", sys.exc_info()[0]
+        print ("Unexpected error:", sys.exc_info()[0])
 
 def sendEmail(speedlimit, image_file_name):
     global SETTINGS    
@@ -563,7 +563,7 @@ def sendEmail(speedlimit, image_file_name):
         s.sendmail(email["sender_email"], email["receiver_email"], text)
         s.quit()    
     except:
-        print "Unexpected error:", sys.exc_info()[0]  
+        print ("Unexpected error:", sys.exc_info()[0])  
         
 if __name__ == "__main__":
     if os.name != 'nt':
