@@ -55,29 +55,34 @@ def signal_handler(sig, frame):
     global client
     global logging
     
-    logging.info("Disconnect")
-    client.disconnect
-    CAMERA.exit()
+    try:
+        logging.info("Disconnect")
+        client.disconnect
+        CAMERA.exit()
     sys.exit(0)
         
 def get_sensor_config():
     global SETTINGS
-    
     config = configs.SparseServiceConfig()
     
-    radar = SETTINGS["Sensor"]
-    config.range_interval = [float(radar["range_start"]), float(radar["range_end"])]
-    config.stepsize = int(radar["stepsize"])
-    config.sampling_mode = configs.SparseServiceConfig.SAMPLING_MODE_A
-    config.number_of_subsweeps = int(radar["number_of_subsweeps"])
-    config.gain = float(radar["gain"])
-    config.hw_accelerated_average_samples = int(radar["hw_accelerated_average_samples"])
-    # config.subsweep_rate = 6e3
+    try:
+        radar = SETTINGS["Sensor"]
+        config.range_interval = [float(radar["range_start"]), float(radar["range_end"])]
+        config.stepsize = int(radar["stepsize"])
+        config.sampling_mode = configs.SparseServiceConfig.SAMPLING_MODE_A
+        config.number_of_subsweeps = int(radar["number_of_subsweeps"])
+        config.gain = float(radar["gain"])
+        config.hw_accelerated_average_samples = int(radar["hw_accelerated_average_samples"])
+        # config.subsweep_rate = 6e3
 
-    # force max frequency
-    config.sweep_rate = int(radar["sweep_rate"])
-    config.experimental_stitching = False
-    return config
+        # force max frequency
+        config.sweep_rate = int(radar["sweep_rate"])
+        config.experimental_stitching = False
+        
+    except:
+        print "Unexpected error:", sys.exc_info()[0]
+        
+    return config    
     
 def main():
     global CAMERA
@@ -87,43 +92,45 @@ def main():
     global SETTINGS
     
     signal.signal(signal.SIGINT, signal_handler)
-    
-    SETTINGS.read("settings.ini")
-    
-    args = example_utils.ExampleArgumentParser(num_sens=1).parse_args()
-    example_utils.config_logging(args)
-    logging.info("radarCat starting with args " + str(args))
-
-    if args.socket_addr:
-        client = SocketClient(args.socket_addr)
-    elif args.spi:
-        client = SPIClient()
-    else:
-        port = args.serial_port or example_utils.autodetect_serial_port()
-        client = UARTClient(port)
-
-    # setup Camera date and time
-    if os.name != 'nt':
-        logging.info("set Camera date and time")
-        callback_obj = gp.check_result(gp.use_python_logging())
-        # open camera connection
-        CAMERA = gp.check_result(gp.gp_camera_new())
-        gp.check_result(gp.gp_camera_init(CAMERA))
-        # get camera details
-        abilities = gp.check_result(gp.gp_camera_get_abilities(CAMERA))
-        # get configuration tree
-        camConfig = gp.check_result(gp.gp_camera_get_config(CAMERA))
+    try:
+        SETTINGS.read("settings.ini")
         
-        # find the date/time setting config item and set it
-        if set_datetime(camConfig, abilities.model):
-            # apply the changed config
-            gp.check_result(gp.gp_camera_set_config(CAMERA, camConfig))
+        args = example_utils.ExampleArgumentParser(num_sens=1).parse_args()
+        example_utils.config_logging(args)
+        logging.info("radarCat starting with args " + str(args))
+
+        if args.socket_addr:
+            client = SocketClient(args.socket_addr)
+        elif args.spi:
+            client = SPIClient()
         else:
-            logging.error("Could not set date & time")
-    
-    SENSOR_CONFIG = get_sensor_config()
-    SENSOR_CONFIG.sensor = args.sensors
-   
+            port = args.serial_port or example_utils.autodetect_serial_port()
+            client = UARTClient(port)
+
+        # setup Camera date and time
+        if os.name != 'nt':
+            logging.info("set Camera date and time")
+            callback_obj = gp.check_result(gp.use_python_logging())
+            # open camera connection
+            CAMERA = gp.check_result(gp.gp_camera_new())
+            gp.check_result(gp.gp_camera_init(CAMERA))
+            # get camera details
+            abilities = gp.check_result(gp.gp_camera_get_abilities(CAMERA))
+            # get configuration tree
+            camConfig = gp.check_result(gp.gp_camera_get_config(CAMERA))
+            
+            # find the date/time setting config item and set it
+            if set_datetime(camConfig, abilities.model):
+                # apply the changed config
+                gp.check_result(gp.gp_camera_set_config(CAMERA, camConfig))
+            else:
+                logging.error("Could not set date & time")
+        
+        SENSOR_CONFIG = get_sensor_config()
+        SENSOR_CONFIG.sensor = args.sensors
+    except:
+        print "Unexpected error:", sys.exc_info()[0]
+        
     while True:
         detection()
         time.sleep(3)
@@ -147,79 +154,85 @@ def detection():
     LOCK = False
     CONTINUE = False
     
-    SPEEDLIMIT = float(SETTINGS.get("Speed","Limit"))
-    SPEEDLIMIT_TEMP = SPEEDLIMIT
+    try:
+        SPEEDLIMIT = float(SETTINGS.get("Speed","Limit"))
+        SPEEDLIMIT_TEMP = SPEEDLIMIT
+            
+
+
+        logging.info(SENSOR_CONFIG)
+        session_info = client.setup_session(SENSOR_CONFIG)
+        logging.info(session_info)
         
+        client.start_streaming()
+
+        processing_config = get_processing_config()
+        
+        processor = Processor(SENSOR_CONFIG, processing_config, session_info)
 
 
-    logging.info(SENSOR_CONFIG)
-    session_info = client.setup_session(SENSOR_CONFIG)
-    logging.info(session_info)
+        lastSpeed = np.nan
+        lastDistance = 0
+        curDirection = "away"
+        gotDirection = False
+        detection_in_progress = False
+
+        while not LOCK:                    
+            info, sweep = client.get_next()        
+            plot_data = processor.process(sweep)
+
+            speed = (plot_data["speed"])
+
+            if np.isnan(speed) and np.isnan(lastSpeed):
+                continue
+
+            speed = speed * 3.6
+            distance = (plot_data["distance"])
+
+            if speed > 0.2 and (lastSpeed != speed or distance != lastDistance):
+                if lastDistance != 0 and distance > lastDistance:
+                   if not gotDirection:
+                        DIRECTION = "away"
+                        gotDirection = True
+                   curDirection = "away"
+                elif lastDistance != 0 and distance < lastDistance:
+                    if not gotDirection:
+                        DIRECTION = "towards"
+                        gotDirection = True
+                    curDirection = "towards"
+                elif lastDistance != 0 and distance == lastDistance:
+                   curDirection = "stay"
+                else:
+                   curDirection = ""
+
+                logging.info("Speed: " + str(round(speed, 1)) + "km/h in " + str(round(distance, 1)) + "m " + curDirection)
+                lastSpeed = speed
+                lastDistance = distance
+            elif speed < 0.4 and lastSpeed != 0:
+                logging.info("No movement")
+                lastSpeed = np.nan
+                lastDistance = 0
+
+            if speed > SPEEDLIMIT_TEMP:
+                SPEEDLIMIT_TEMP = speed
+                logging.info("Max Speed: " + str(SPEEDLIMIT_TEMP))
+                if not detection_in_progress:
+                    detection_in_progress = True
+                    
+                    threadCaptureImage = Thread(target = captureImage, args=[])
+                    threadCaptureImage.start()
+                    
+                    r = Timer(1.0, lockRadar, (""))
+                    r.start()
+    except:
+        print "Unexpected error:", sys.exc_info()[0]
     
-    client.start_streaming()
-
-    processing_config = get_processing_config()
-    
-    processor = Processor(SENSOR_CONFIG, processing_config, session_info)
-
-
-    lastSpeed = np.nan
-    lastDistance = 0
-    curDirection = "away"
-    gotDirection = False
-    detection_in_progress = False
-
-    while not LOCK:                    
-        info, sweep = client.get_next()        
-        plot_data = processor.process(sweep)
-
-        speed = (plot_data["speed"])
-
-        if np.isnan(speed) and np.isnan(lastSpeed):
-            continue
-
-        speed = speed * 3.6
-        distance = (plot_data["distance"])
-
-        if speed > 0.2 and (lastSpeed != speed or distance != lastDistance):
-            if lastDistance != 0 and distance > lastDistance:
-               if not gotDirection:
-                    DIRECTION = "away"
-                    gotDirection = True
-               curDirection = "away"
-            elif lastDistance != 0 and distance < lastDistance:
-                if not gotDirection:
-                    DIRECTION = "towards"
-                    gotDirection = True
-                curDirection = "towards"
-            elif lastDistance != 0 and distance == lastDistance:
-               curDirection = "stay"
-            else:
-               curDirection = ""
-
-            logging.info("Speed: " + str(round(speed, 1)) + "km/h in " + str(round(distance, 1)) + "m " + curDirection)
-            lastSpeed = speed
-            lastDistance = distance
-        elif speed < 0.4 and lastSpeed != 0:
-            logging.info("No movement")
-            lastSpeed = np.nan
-            lastDistance = 0
-
-        if speed > SPEEDLIMIT_TEMP:
-            SPEEDLIMIT_TEMP = speed
-            logging.info("Max Speed: " + str(SPEEDLIMIT_TEMP))
-            if not detection_in_progress:
-                detection_in_progress = True
-                
-                threadCaptureImage = Thread(target = captureImage, args=[])
-                threadCaptureImage.start()
-                
-                r = Timer(1.0, lockRadar, (""))
-                r.start()
-          
-    logging.info("Stop streaming")
-    client.stop_streaming()
-    
+    try:
+        logging.info("Stop streaming")
+        client.stop_streaming()
+    except:
+        print "Unexpected error:", sys.exc_info()[0]
+        
     while not CONTINUE:
         logging.info("Waiting...")
         time.sleep(3)
@@ -376,8 +389,6 @@ def get_range_depths(sensor_config, session_info):
     return np.linspace(range_start, range_end, num_depths)
     
 def captureImage():
-    if os.name == 'nt':
-        return
     global CAMERA
     global IMAGE_FILE_NAME
     global logging
@@ -386,88 +397,95 @@ def captureImage():
     global SPEEDLIMIT_TEMP
     global SPEEDLIMIT
     global CONTINUE
+    try:
+        if os.name == 'nt':
+            return
+        
+        # increment Image Counter
+        imageCounter = int(SETTINGS["Camera"]["count"])
+        imageCounter = imageCounter + 1
+        SETTINGS["Camera"]["count"] = str(imageCounter)
+        
+        # capture the image
+        IMAGE_FILE_NAME = 'image' + str(imageCounter)
+        # current_time = datetime.now()
+        logging.info("Capture Image")
+        file_path = CAMERA.capture(gp.GP_CAPTURE_IMAGE)
+        logging.info('Camera file path: {0}/{1}'.format(file_path.folder, file_path.name))
+        target = os.path.join('.', IMAGE_FILE_NAME + '.jpg')
+        logging.info('Copying image to ' + target)
+        camera_file = CAMERA.file_get(
+            file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL)
+        camera_file.save(target)
+        
+        # incremendet counter saving
+        with open('settings.ini', 'w') as configfile:
+            SETTINGS.write(configfile)
 
-    
-    # increment Image Counter
-    imageCounter = int(SETTINGS["Camera"]["count"])
-    imageCounter = imageCounter + 1
-    SETTINGS["Camera"]["count"] = str(imageCounter)
-    
-    # capture the image
-    IMAGE_FILE_NAME = 'image' + str(imageCounter)
-    # current_time = datetime.now()
-    logging.info("Capture Image")
-    file_path = CAMERA.capture(gp.GP_CAPTURE_IMAGE)
-    logging.info('Camera file path: {0}/{1}'.format(file_path.folder, file_path.name))
-    target = os.path.join('.', IMAGE_FILE_NAME + '.jpg')
-    logging.info('Copying image to ' + target)
-    camera_file = CAMERA.file_get(
-        file_path.folder, file_path.name, gp.GP_FILE_TYPE_NORMAL)
-    camera_file.save(target)
-    
-    # incremendet counter saving
-    with open('settings.ini', 'w') as configfile:
-        SETTINGS.write(configfile)
+        # check direction of the movement
+        if DIRECTION == "away":
+            dir = "A"
+        elif DIRECTION == "towards":
+            dir = "T"
+        else:
+            dir = ""
+        DIRECTION = ""
 
-    # check direction of the movement
-    if DIRECTION == "away":
-        dir = "A"
-    elif DIRECTION == "towards":
-        dir = "T"
-    else:
-        dir = ""
-    DIRECTION = ""
+        logging.info("Read EXIF data")
+        # read EXIF data
+        f = open(IMAGE_FILE_NAME + ".jpg", 'rb')
+        tags = exifread.process_file(f)
+        
+        exposure = str(tags["EXIF ExposureTime"])
+        iso = str(tags["EXIF ISOSpeedRatings"])
+        aperture = "f/" + str(eval(str(tags["EXIF FNumber"])))
+        focal = str(tags["EXIF FocalLength"]) + " mm"
+        dateTime = str(tags["EXIF DateTimeOriginal"])
+        
+        logging.info("Start post processing")
+        # start post processing
+        myCmd = "convert " + IMAGE_FILE_NAME + ".jpg -strokewidth 0 -fill \"rgba( 0, 0, 0, 1 )\" \
+        -draw \"rectangle 0,0 6000,300 \" -font helvetica -fill white -pointsize 100 \
+        -draw \"text 30,130 'SPEED'\" -fill white -pointsize 100 \
+        -draw \"text 30,230 '" + str(round(SPEEDLIMIT_TEMP, 1)) + " km/h'\" -fill white -pointsize 100 \
+        -draw \"text 500,130 'DIR'\" -fill white -pointsize 100 \
+        -draw \"text 500,230 '" + dir + "'\" -fill white -pointsize 100 \
+        -draw \"text 800,130 'DATE'\" -fill white -pointsize 100 \
+        -draw \"text 800,230 '" + dateTime + "'\" -fill white -pointsize 100 \
+        -draw \"text 1300,130 ' H:M:S'\" -fill white -pointsize 100 \
+        -draw \"text 1800,130 'CODE'\" -fill white -pointsize 100 \
+        -draw \"text 1800,230 'radarCat'\" -fill white -pointsize 100 \
+        -draw \"text 2300,130 'FOTO'\" -fill white -pointsize 100 \
+        -draw \"text 2300,230 '" + str(imageCounter) + "'\" -fill white -pointsize 100 \
+        -draw \"text 2700,130 'SP.LIMIT'\" -fill white -pointsize 100 \
+        -draw \"text 2700,230 '" + str(round(SPEEDLIMIT, 1)) + " km/h'\" -fill white -pointsize 100 \
+        -draw \"text 3200,130 'EXPOSURE'\" -fill white -pointsize 100 \
+        -draw \"text 3200,230 '" + exposure + "'\" -fill white -pointsize 100 \
+        -draw \"text 4100,130 'ISO'\" -fill white -pointsize 100 \
+        -draw \"text 4100,230 '" + iso + "'\" -fill white -pointsize 100 \
+        -draw \"text 4500,130 'APERTURE'\" -fill white -pointsize 100 \
+        -draw \"text 4500,230 '" + aperture + "'\" -fill white -pointsize 100 \
+        -draw \"text 5200,130 'FOCAL'\" -fill white -pointsize 100 \
+        -draw \"text 5200,230 '" + focal + "'\" \
+        radarCat_" + IMAGE_FILE_NAME + ".jpg"
+        args = shlex.split(myCmd)
+        subprocess.call(args)
+      
+        # sende image by email
+        logging.info("Send Email with Attachment")
+        sendEmail(SPEEDLIMIT, IMAGE_FILE_NAME)
 
-    logging.info("Read EXIF data")
-    # read EXIF data
-    f = open(IMAGE_FILE_NAME + ".jpg", 'rb')
-    tags = exifread.process_file(f)
-    
-    exposure = str(tags["EXIF ExposureTime"])
-    iso = str(tags["EXIF ISOSpeedRatings"])
-    aperture = "f/" + str(eval(str(tags["EXIF FNumber"])))
-    focal = str(tags["EXIF FocalLength"]) + " mm"
-    dateTime = str(tags["EXIF DateTimeOriginal"])
-    
-    logging.info("Start post processing")
-    # start post processing
-    myCmd = "convert " + IMAGE_FILE_NAME + ".jpg -strokewidth 0 -fill \"rgba( 0, 0, 0, 1 )\" \
-    -draw \"rectangle 0,0 6000,300 \" -font helvetica -fill white -pointsize 100 \
-    -draw \"text 30,130 'SPEED'\" -fill white -pointsize 100 \
-    -draw \"text 30,230 '" + str(round(SPEEDLIMIT_TEMP, 1)) + " km/h'\" -fill white -pointsize 100 \
-    -draw \"text 500,130 'DIR'\" -fill white -pointsize 100 \
-    -draw \"text 500,230 '" + dir + "'\" -fill white -pointsize 100 \
-    -draw \"text 800,130 'DATE'\" -fill white -pointsize 100 \
-    -draw \"text 800,230 '" + dateTime + "'\" -fill white -pointsize 100 \
-    -draw \"text 1300,130 ' H:M:S'\" -fill white -pointsize 100 \
-    -draw \"text 1800,130 'CODE'\" -fill white -pointsize 100 \
-    -draw \"text 1800,230 'radarCat'\" -fill white -pointsize 100 \
-    -draw \"text 2300,130 'FOTO'\" -fill white -pointsize 100 \
-    -draw \"text 2300,230 '" + str(imageCounter) + "'\" -fill white -pointsize 100 \
-    -draw \"text 2700,130 'SP.LIMIT'\" -fill white -pointsize 100 \
-    -draw \"text 2700,230 '" + str(round(SPEEDLIMIT, 1)) + " km/h'\" -fill white -pointsize 100 \
-    -draw \"text 3200,130 'EXPOSURE'\" -fill white -pointsize 100 \
-    -draw \"text 3200,230 '" + exposure + "'\" -fill white -pointsize 100 \
-    -draw \"text 4100,130 'ISO'\" -fill white -pointsize 100 \
-    -draw \"text 4100,230 '" + iso + "'\" -fill white -pointsize 100 \
-    -draw \"text 4500,130 'APERTURE'\" -fill white -pointsize 100 \
-    -draw \"text 4500,230 '" + aperture + "'\" -fill white -pointsize 100 \
-    -draw \"text 5200,130 'FOCAL'\" -fill white -pointsize 100 \
-    -draw \"text 5200,230 '" + focal + "'\" \
-    radarCat_" + IMAGE_FILE_NAME + ".jpg"
-    args = shlex.split(myCmd)
-    subprocess.call(args)
-    
-    # remove old images
-    os.remove(IMAGE_FILE_NAME + ".jpg")
-    
-    # sende image by email
-    logging.info("Send Email with Attachment")
-    sendEmail(SPEEDLIMIT, IMAGE_FILE_NAME)
-
-    # reset values and restart detection
-    SPEEDLIMIT_TEMP = SPEEDLIMIT
-    logging.info ("Restart detection")
+        # reset values and restart detection
+        SPEEDLIMIT_TEMP = SPEEDLIMIT
+        logging.info ("Restart detection")
+        
+        # copy files and delete after copy
+        server = SETTINGS["Server"]
+        send_server(server["server"], user["user"], password["password"], path["path"], "radarCat_" + IMAGE_FILE_NAME + ".jpg")
+        os.remove("*.jpg")
+        
+    except:
+        print "Unexpected error:", sys.exc_info()[0]
     
     CONTINUE = True
 
@@ -480,56 +498,69 @@ def lockRadar():
 
 
 def set_datetime(config, model):
-    if model == 'Canon EOS 80D':
-        OK, date_config = gp.gp_widget_get_child_by_name(config, 'datetimeutc')
+    try:
+        if model == 'Canon EOS 80D':
+            OK, date_config = gp.gp_widget_get_child_by_name(config, 'datetimeutc')
+            if OK >= gp.GP_OK:
+                now = int(time.time())
+                gp.check_result(gp.gp_widget_set_value(date_config, now))
+                return True
+        OK, sync_config = gp.gp_widget_get_child_by_name(config, 'syncdatetime')
         if OK >= gp.GP_OK:
-            now = int(time.time())
-            gp.check_result(gp.gp_widget_set_value(date_config, now))
+            gp.check_result(gp.gp_widget_set_value(sync_config, 1))
             return True
-    OK, sync_config = gp.gp_widget_get_child_by_name(config, 'syncdatetime')
-    if OK >= gp.GP_OK:
-        gp.check_result(gp.gp_widget_set_value(sync_config, 1))
-        return True
-    OK, date_config = gp.gp_widget_get_child_by_name(config, 'datetime')
-    if OK >= gp.GP_OK:
-        widget_type = gp.check_result(gp.gp_widget_get_type(date_config))
-        if widget_type == gp.GP_WIDGET_DATE:
-            now = int(time.time())
-            gp.check_result(gp.gp_widget_set_value(date_config, now))
-        else:
-            now = time.strftime('%Y-%m-%d %H:%M:%S')
-            gp.check_result(gp.gp_widget_set_value(date_config, now))
-        return True
+        OK, date_config = gp.gp_widget_get_child_by_name(config, 'datetime')
+        if OK >= gp.GP_OK:
+            widget_type = gp.check_result(gp.gp_widget_get_type(date_config))
+            if widget_type == gp.GP_WIDGET_DATE:
+                now = int(time.time())
+                gp.check_result(gp.gp_widget_set_value(date_config, now))
+            else:
+                now = time.strftime('%Y-%m-%d %H:%M:%S')
+                gp.check_result(gp.gp_widget_set_value(date_config, now))
+            return True
+    
+    except:
+        print "Unexpected error:", sys.exc_info()[0]
+    
     return False
+
+def send_server(server, user, password, path, file):
+    try:
+        logging.info("Copy to local media server")
+        subprocess.check_call(["sshpass", "-p", password, "scp", file", user + "@" + server + ":" + path])
+    except:
+        print "Unexpected error:", sys.exc_info()[0]
 
 def sendEmail(speedlimit, image_file_name):
     global SETTINGS    
-   
-    email = SETTINGS["Email"]
- 
-    body = email["body"] + " "  + str(speedlimit) + " km/h"
-    message = MIMEMultipart()
-    message["From"] = email["sender_email"]
-    message["To"] = email["receiver_email"]
-    message["Subject"] = email["subject"]
+    try:
+        email = SETTINGS["Email"]
+     
+        body = email["body"] + " "  + str(speedlimit) + " km/h"
+        message = MIMEMultipart()
+        message["From"] = email["sender_email"]
+        message["To"] = email["receiver_email"]
+        message["Subject"] = email["subject"]
 
-    message.attach(MIMEText(body, "plain"))
+        message.attach(MIMEText(body, "plain"))
 
-    filename = "radarCat_" + image_file_name + ".jpg"
-    img_data = open(filename, 'rb').read()
+        filename = "radarCat_" + image_file_name + ".jpg"
+        img_data = open(filename, 'rb').read()
 
-    image = MIMEImage(img_data, name=os.path.basename(filename))
-  
-    message.attach(image)
-    text = message.as_string()
-
-    # Log in to server using secure context and send email#
-    s = smtplib.SMTP(email["server"], int(email["port"]))
-    s.starttls()
-    s.login(email["user"], email["password"])
-    s.sendmail(email["sender_email"], email["receiver_email"], text)
-    s.quit()    
+        image = MIMEImage(img_data, name=os.path.basename(filename))
       
+        message.attach(image)
+        text = message.as_string()
+
+        # Log in to server using secure context and send email#
+        s = smtplib.SMTP(email["server"], int(email["port"]))
+        s.starttls()
+        s.login(email["user"], email["password"])
+        s.sendmail(email["sender_email"], email["receiver_email"], text)
+        s.quit()    
+    except:
+        print "Unexpected error:", sys.exc_info()[0]  
         
 if __name__ == "__main__":
     if os.name != 'nt':
