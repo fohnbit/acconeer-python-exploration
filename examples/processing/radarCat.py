@@ -27,6 +27,10 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import smtplib
 
+from luma.led_matrix.device import max7219
+from luma.core.interface.serial import spi, noop
+from luma.core.virtual import viewport, sevensegment
+
 
 HALF_WAVELENGTH = 2.445e-3  # m
 FFT_OVERSAMPLING_FACTOR = 4
@@ -45,6 +49,7 @@ client = None
 EXIT = None
 LOCK = None
 SENSOR_CONFIG = None
+SEG = None
 
 # setup logging
 log_format = "%(asctime)s - %(levelname)s - %(message)s"
@@ -93,9 +98,15 @@ def main():
     global client
     global SENSOR_CONFIG
     global SETTINGS
+    global SEG
     
     signal.signal(signal.SIGINT, signal_handler)
     try:
+        # create seven segment device
+        serial = spi(port=0, device=0, gpio=noop())
+        device = max7219(serial, cascaded=1)
+        SEG = sevensegment(device)
+    
         SETTINGS.read("settings.ini")
         
         args = example_utils.ExampleArgumentParser(num_sens=1).parse_args()
@@ -153,6 +164,7 @@ def detection():
     global EXIT
     global SENSOR_CONFIG
     global CONTINUE
+    global SEG
     
     LOCK = False
     CONTINUE = False
@@ -160,7 +172,7 @@ def detection():
     try:
         SPEEDLIMIT = float(SETTINGS.get("Speed","Limit"))
         SPEEDLIMIT_TEMP = SPEEDLIMIT
-            
+        SEG.text = "MAX " + SPEEDLIMIT    
 
 
         logging.info(SENSOR_CONFIG)
@@ -193,6 +205,7 @@ def detection():
             distance = (plot_data["distance"])
 
             if speed > 0.2 and (lastSpeed != speed or distance != lastDistance):
+                SEG.text = SPEEDLIMIT + " " + speed
                 if lastDistance != 0 and distance > lastDistance:
                    if not gotDirection:
                         DIRECTION = "away"
@@ -218,6 +231,7 @@ def detection():
 
             if speed > SPEEDLIMIT_TEMP:
                 SPEEDLIMIT_TEMP = speed
+                SEG.text = SPEEDLIMIT + " " + speed
                 logging.info("Max Speed: " + str(SPEEDLIMIT_TEMP))
                 if not detection_in_progress:
                     detection_in_progress = True
@@ -233,16 +247,23 @@ def detection():
     try:
         logging.info("Stop streaming")
         client.stop_streaming()
+        SEG.text = "Max " + SPEEDLIMIT
     except:
         print ("Unexpected error:", sys.exc_info()[0])
-        
-    while not CONTINUE:
-        logging.info("Waiting...")
-        time.sleep(3)
-        
- 
     
-
+    intensity = 2
+    while not CONTINUE:
+        # logging.info("Waiting...")
+        if intensity == 2:
+            intensity = 16
+        else:
+            intensity = 2
+            
+        seg.device.contrast(intensity * 16)
+        time.sleep(0.1)
+     
+    SEG.text = ""
+    seg.device.contrast(16 * 16)
 
 class ProcessingConfiguration(configbase.ProcessingConfig):
     VERSION = 1
